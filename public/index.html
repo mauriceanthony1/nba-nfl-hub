@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>🏀🏈 Playoffs Hub 2026</title>
+<style>
+/* ─── RESET & BASE ──────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:      #0f1117;
+  --bg2:     #1a1d2e;
+  --bg3:     #242740;
+  --border:  #2e3250;
+  --accent:  #5b6af0;
+  --accent2: #e63b6f;
+  --green:   #22c55e;
+  --yellow:  #eab308;
+  --red:     #ef4444;
+  --text:    #e2e8f0;
+  --muted:   #7c8ab8;
+  --nba:     #c9a227;
+  --nfl:     #3a7bd5;
+  --radius:  8px;
+  --shadow:  0 4px 24px rgba(0,0,0,.45);
+}
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; }
+a { color: var(--accent); }
+button { cursor: pointer; font: inherit; }
+input, select { font: inherit; }
+
+/* ─── HEADER ────────────────────────────────────────────────────────────────── */
+#header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  position: sticky; top: 0; z-index: 100;
+}
+#header h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: .5px; flex: 1; }
+#header h1 span { opacity: .5; font-size: .8rem; font-weight: 400; margin-left: 8px; }
+.badge { display: inline-flex; align-items: center; gap: 5px; font-size: .72rem; font-weight: 700;
+  padding: 3px 9px; border-radius: 20px; letter-spacing: .5px; }
+.badge.live  { background: #1a3a1a; color: var(--green); border: 1px solid #2a5a2a; }
+.badge.locked{ background: #3a2020; color: var(--red);   border: 1px solid #5a3030; }
+.badge.dot::before { content: '●'; font-size: .6rem; }
+#user-tabs { display: flex; gap: 4px; }
+.utab { background: var(--bg3); border: 1px solid var(--border); border-radius: 20px;
+  padding: 4px 13px; color: var(--muted); font-size: .8rem; transition: all .15s; }
+.utab.active, .utab:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ─── NAV TABS ──────────────────────────────────────────────────────────────── */
+#nav { display: flex; gap: 2px; background: var(--bg2); border-bottom: 1px solid var(--border);
+  padding: 0 16px; overflow-x: auto; }
+.ntab { padding: 11px 18px; border-bottom: 2px solid transparent; color: var(--muted);
+  font-weight: 600; font-size: .85rem; letter-spacing: .4px; white-space: nowrap; cursor: pointer;
+  transition: all .15s; background: none; border-top: none; border-left: none; border-right: none; }
+.ntab:hover  { color: var(--text); }
+.ntab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.ntab.nba-tab.active { color: var(--nba); border-bottom-color: var(--nba); }
+.ntab.nfl-tab.active { color: var(--nfl); border-bottom-color: var(--nfl); }
+
+/* ─── MAIN ──────────────────────────────────────────────────────────────────── */
+#main { padding: 20px; min-height: calc(100vh - 110px); }
+.page { display: none; }
+.page.active { display: block; }
+
+/* ─── CARD ──────────────────────────────────────────────────────────────────── */
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px; margin-bottom: 14px; }
+.card h2 { font-size: .9rem; font-weight: 700; color: var(--muted); letter-spacing: .5px;
+  text-transform: uppercase; margin-bottom: 12px; }
+
+/* ─── NBA BRACKET ───────────────────────────────────────────────────────────── */
+#nba-bracket-wrap { overflow-x: auto; }
+.bracket-grid { display: grid; gap: 0; min-width: 900px; }
+
+/* Conference heading */
+.conf-label { font-size: .75rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+  padding: 6px 12px; color: var(--nba); }
+
+/* Round labels row */
+.round-labels { display: flex; gap: 8px; padding: 0 4px 6px; }
+.round-label  { flex: 1; text-align: center; font-size: .7rem; color: var(--muted); font-weight: 700;
+  letter-spacing: .5px; text-transform: uppercase; }
+
+/* The actual bracket layout */
+.bracket-conf { display: flex; align-items: center; gap: 8px; padding: 4px; }
+.bracket-col  { display: flex; flex-direction: column; justify-content: space-around; gap: 6px; flex: 1; }
+
+/* Series card */
+.series-card {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden; cursor: pointer; transition: border-color .15s;
+  position: relative;
+}
+.series-card:hover { border-color: var(--accent); }
+.series-card.locked-series { border-color: var(--red); opacity: .85; }
+.team-row {
+  display: flex; align-items: center; gap: 6px; padding: 6px 10px;
+  transition: background .1s;
+}
+.team-row:first-of-type { border-bottom: 1px solid var(--border); }
+.team-row:hover { background: rgba(255,255,255,.04); }
+.team-row.winner-row { background: rgba(34,197,94,.1); }
+.team-row.picked-row { outline: 2px solid var(--accent); outline-offset: -2px; }
+.seed { font-size: .65rem; color: var(--muted); min-width: 14px; }
+.abbr { font-size: .8rem; font-weight: 700; letter-spacing: .3px; }
+.team-name { font-size: .75rem; color: var(--muted); flex: 1; }
+.wins { font-size: .85rem; font-weight: 800; margin-left: auto; min-width: 16px; text-align: right; }
+.series-winner-tag {
+  position: absolute; top: 2px; right: 4px; font-size: .6rem; font-weight: 800;
+  color: var(--green); letter-spacing: .5px;
+}
+.series-round-label { font-size: .6rem; color: var(--muted); padding: 2px 10px;
+  background: rgba(0,0,0,.2); text-align: center; }
+
+/* NBA Finals centered */
+.finals-wrap { display: flex; justify-content: center; margin: 12px 0; }
+.finals-card { min-width: 200px; max-width: 240px; }
+
+/* ─── NFL TRACKER ───────────────────────────────────────────────────────────── */
+#nfl-week-selector { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 16px; }
+.week-btn {
+  padding: 5px 10px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--bg3); color: var(--muted); font-size: .75rem; font-weight: 600;
+  transition: all .15s;
+}
+.week-btn:hover  { border-color: var(--nfl); color: var(--text); }
+.week-btn.active { background: var(--nfl); color: #fff; border-color: var(--nfl); }
+.week-btn.playoff-week { border-color: var(--accent2); }
+.week-btn.playoff-week.active { background: var(--accent2); border-color: var(--accent2); }
+.week-btn.has-result { border-color: var(--green); }
+
+#nfl-games-wrap {}
+.game-row {
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
+  margin-bottom: 6px; cursor: pointer; transition: border-color .15s;
+}
+.game-row:hover { border-color: var(--nfl); }
+.game-team {
+  flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0;
+}
+.game-team.right { flex-direction: row-reverse; }
+.team-abbr-badge {
+  padding: 3px 7px; border-radius: 5px; font-size: .8rem; font-weight: 800;
+  background: var(--bg2); letter-spacing: .3px; white-space: nowrap;
+}
+.game-score { display: flex; align-items: center; gap: 6px; padding: 0 10px; }
+.score-num { font-size: 1.1rem; font-weight: 800; min-width: 24px; text-align: center; }
+.game-sep { color: var(--muted); font-size: .8rem; }
+.game-status { font-size: .65rem; font-weight: 700; letter-spacing: .5px;
+  padding: 2px 7px; border-radius: 10px; white-space: nowrap; }
+.game-status.pre   { background: #1a1d2e; color: var(--muted); }
+.game-status.live  { background: #1a3a1a; color: var(--green); }
+.game-status.final { background: #1a2a3a; color: #7cb9e8; }
+.game-pick-indicator {
+  font-size: .65rem; font-weight: 700; padding: 2px 7px; border-radius: 10px;
+  background: rgba(91,106,240,.2); color: var(--accent); border: 1px solid var(--accent);
+  white-space: nowrap;
+}
+.game-pick-indicator.correct { background: rgba(34,197,94,.15); color: var(--green); border-color: var(--green); }
+.game-pick-indicator.wrong   { background: rgba(239,68,68,.15); color: var(--red);   border-color: var(--red); }
+.game-row.winner-game .game-team-name { font-weight: 700; color: var(--green); }
+.game-row.picked-away .game-team.left  .team-abbr-badge { outline: 2px solid var(--accent); }
+.game-row.picked-home .game-team.right .team-abbr-badge { outline: 2px solid var(--accent); }
+
+/* ─── LEADERBOARD ───────────────────────────────────────────────────────────── */
+.lb-table { width: 100%; border-collapse: collapse; }
+.lb-table th { padding: 8px 12px; text-align: left; font-size: .7rem; font-weight: 700;
+  color: var(--muted); letter-spacing: .5px; text-transform: uppercase;
+  border-bottom: 1px solid var(--border); }
+.lb-table td { padding: 10px 12px; border-bottom: 1px solid rgba(46,50,80,.5); }
+.lb-table tr:last-child td { border-bottom: none; }
+.lb-table tr:hover td { background: rgba(255,255,255,.02); }
+.rank-num { font-size: 1rem; font-weight: 800; color: var(--muted); }
+.rank-num.gold   { color: #ffd700; }
+.rank-num.silver { color: #c0c0c0; }
+.rank-num.bronze { color: #cd7f32; }
+.pts-big { font-size: 1.2rem; font-weight: 800; }
+
+/* ─── TEAM STATS MODAL ──────────────────────────────────────────────────────── */
+#stats-modal {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,.7); align-items: center; justify-content: center;
+}
+#stats-modal.open { display: flex; }
+#stats-box {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 24px; max-width: 480px; width: 92%; max-height: 80vh; overflow-y: auto;
+  box-shadow: var(--shadow);
+}
+#stats-box h2 { margin-bottom: 6px; }
+#stats-box .close-btn {
+  float: right; background: none; border: none; color: var(--muted); font-size: 1.4rem;
+  line-height: 1; margin-top: -4px;
+}
+#stats-box .close-btn:hover { color: var(--text); }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.stat-item { background: var(--bg3); border-radius: var(--radius); padding: 10px 14px; }
+.stat-label { font-size: .65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.stat-value { font-size: 1.1rem; font-weight: 800; margin-top: 3px; }
+
+/* ─── ADMIN ─────────────────────────────────────────────────────────────────── */
+.admin-section { margin-bottom: 20px; }
+.admin-section h3 { font-size: .8rem; font-weight: 800; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .5px; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+.form-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+.form-row label { font-size: .8rem; color: var(--muted); min-width: 90px; }
+.inp { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text); padding: 6px 10px; outline: none; transition: border-color .15s; }
+.inp:focus { border-color: var(--accent); }
+.inp-sm { width: 80px; }
+.btn { padding: 7px 16px; border-radius: var(--radius); border: none; font-size: .8rem;
+  font-weight: 700; letter-spacing: .3px; transition: opacity .15s; }
+.btn:hover { opacity: .85; }
+.btn-primary  { background: var(--accent);  color: #fff; }
+.btn-success  { background: var(--green);   color: #000; }
+.btn-danger   { background: var(--red);     color: #fff; }
+.btn-warn     { background: var(--yellow);  color: #000; }
+.btn-outline  { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.msg { font-size: .8rem; padding: 5px 10px; border-radius: var(--radius); margin-top: 6px; display: none; }
+.msg.ok  { background: #1a3a1a; color: var(--green); display: block; }
+.msg.err { background: #3a1a1a; color: var(--red);   display: block; }
+
+/* user chips */
+.user-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.user-chip  { display: flex; align-items: center; gap: 6px; background: var(--bg3);
+  border: 1px solid var(--border); border-radius: 20px; padding: 4px 10px; font-size: .8rem; }
+.user-chip button { background: none; border: none; color: var(--red); font-size: .85rem; line-height: 1; }
+
+/* NFL admin game row */
+.nfl-admin-row { display: grid; grid-template-columns: 80px 80px 60px 60px 60px 80px auto; gap: 6px;
+  align-items: center; margin-bottom: 6px; font-size: .78rem; }
+.nfl-admin-row select, .nfl-admin-row input { width: 100%; }
+
+/* series admin */
+.series-admin-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  background: var(--bg3); border-radius: var(--radius); padding: 8px 12px; margin-bottom: 6px; }
+.series-admin-row .sid { font-size: .7rem; color: var(--muted); min-width: 50px; font-weight: 700; }
+
+/* ─── RESPONSIVE ────────────────────────────────────────────────────────────── */
+@media(max-width:600px){
+  #header { gap: 8px; }
+  #header h1 { font-size: 1rem; }
+  .ntab { padding: 9px 12px; font-size: .8rem; }
+  #main { padding: 12px; }
+  .nfl-admin-row { grid-template-columns: 1fr 1fr; }
+}
+
+/* ─── TOOLTIP ────────────────────────────────────────────────────────────────── */
+.tooltip { position: relative; display: inline-block; }
+.tooltip .tiptext {
+  visibility: hidden; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 8px; font-size: .75rem; white-space: nowrap;
+  position: absolute; bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%);
+  z-index: 200; pointer-events: none;
+}
+.tooltip:hover .tiptext { visibility: visible; }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ──────────────────────────────────────────────────────────────── -->
+<div id="header">
+  <h1>🏀🏈 Playoffs Hub <span>2026</span></h1>
+  <div id="live-badge" class="badge live dot" style="display:none">LIVE</div>
+  <div id="lock-badge" class="badge locked dot" style="display:none">LOCKED</div>
+  <div id="user-tabs"></div>
+</div>
+
+<!-- ── NAV ─────────────────────────────────────────────────────────────────── -->
+<div id="nav">
+  <button class="ntab nba-tab active" data-page="nba">🏀 NBA Playoffs</button>
+  <button class="ntab nfl-tab"        data-page="nfl">🏈 NFL 2026-27</button>
+  <button class="ntab"                data-page="leaderboard">🏆 Leaderboard</button>
+  <button class="ntab"                data-page="admin">⚙️ Admin</button>
+</div>
+
+<!-- ── PAGES ────────────────────────────────────────────────────────────────── -->
+<div id="main">
+
+  <!-- ── NBA PLAYOFFS ──────────────────────────────────────────────────────── -->
+  <div id="page-nba" class="page active">
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+      <span style="font-size:.75rem;color:var(--muted);">Click a team to pick • Click team logo for stats</span>
+      <span id="nba-pick-count" style="margin-left:auto;font-size:.75rem;color:var(--accent);"></span>
+    </div>
+
+    <!-- EAST CONFERENCE -->
+    <div class="card" style="padding:12px 8px;">
+      <div class="conf-label">🔵 Eastern Conference</div>
+      <div class="round-labels" style="padding-left:0">
+        <div class="round-label">First Round</div>
+        <div class="round-label">Semifinals</div>
+        <div class="round-label">Conf Finals</div>
+      </div>
+      <div class="bracket-conf" id="bracket-east"></div>
+    </div>
+
+    <!-- WEST CONFERENCE -->
+    <div class="card" style="padding:12px 8px;">
+      <div class="conf-label">🔴 Western Conference</div>
+      <div class="round-labels">
+        <div class="round-label">First Round</div>
+        <div class="round-label">Semifinals</div>
+        <div class="round-label">Conf Finals</div>
+      </div>
+      <div class="bracket-conf" id="bracket-west"></div>
+    </div>
+
+    <!-- NBA FINALS -->
+    <div class="card">
+      <div style="text-align:center;font-weight:800;font-size:1rem;color:var(--nba);margin-bottom:12px;">
+        🏆 NBA FINALS
+      </div>
+      <div class="finals-wrap">
+        <div id="bracket-finals" class="finals-card"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── NFL TRACKER ────────────────────────────────────────────────────────── -->
+  <div id="page-nfl" class="page">
+    <div id="nfl-week-selector"></div>
+    <div id="nfl-games-wrap">
+      <div style="color:var(--muted);padding:20px;text-align:center;">Select a week above</div>
+    </div>
+  </div>
+
+  <!-- ── LEADERBOARD ────────────────────────────────────────────────────────── -->
+  <div id="page-leaderboard" class="page">
+    <div class="card">
+      <h2>Overall Standings</h2>
+      <div id="leaderboard-wrap">
+        <div style="color:var(--muted);padding:20px;text-align:center;">Loading…</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div class="card">
+        <h2>🏀 NBA Points</h2>
+        <div id="lb-nba-wrap"></div>
+      </div>
+      <div class="card">
+        <h2>🏈 NFL Points</h2>
+        <div id="lb-nfl-wrap"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADMIN PANEL ────────────────────────────────────────────────────────── -->
+  <div id="page-admin" class="page">
+    <!-- Login -->
+    <div id="admin-login" class="card" style="max-width:380px;">
+      <h2>Admin Login</h2>
+      <div class="form-row" style="margin-top:10px;">
+        <label>Password</label>
+        <input type="password" id="admin-pw-inp" class="inp" placeholder="Enter admin password" style="flex:1"/>
+      </div>
+      <button class="btn btn-primary" onclick="adminLogin()">Login</button>
+      <div id="admin-login-msg" class="msg"></div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="admin-panel" style="display:none;">
+
+      <!-- Controls -->
+      <div class="card">
+        <div class="admin-section">
+          <h3>Global Controls</h3>
+          <div class="form-row">
+            <button class="btn btn-warn"    id="btn-lock"   onclick="adminToggleLock()">🔒 Lock Picks</button>
+            <button class="btn btn-success" id="btn-live"   onclick="adminToggleLive()">📡 Enable Live</button>
+            <button class="btn btn-outline"                 onclick="adminLogout()">Logout</button>
+          </div>
+          <div id="ctrl-msg" class="msg"></div>
+        </div>
+      </div>
+
+      <!-- Users -->
+      <div class="card">
+        <div class="admin-section">
+          <h3>Manage Users</h3>
+          <div id="admin-user-list" class="user-list"></div>
+          <div class="form-row">
+            <input id="new-user-inp" class="inp" placeholder="New username" style="width:180px"/>
+            <button class="btn btn-primary" onclick="adminAddUser()">+ Add User</button>
+          </div>
+          <div id="user-msg" class="msg"></div>
+        </div>
+      </div>
+
+      <!-- NBA Series Editor -->
+      <div class="card">
+        <div class="admin-section">
+          <h3>🏀 NBA Series Scores</h3>
+          <div id="nba-series-admin"></div>
+          <div id="nba-series-msg" class="msg"></div>
+        </div>
+      </div>
+
+      <!-- NFL Week/Game Editor -->
+      <div class="card">
+        <div class="admin-section">
+          <h3>🏈 NFL Game Editor</h3>
+          <div class="form-row" style="margin-bottom:12px;">
+            <label>Week</label>
+            <select id="admin-nfl-week" class="inp" onchange="renderAdminNFLGames()" style="width:180px;"></select>
+          </div>
+          <div id="nfl-games-admin"></div>
+          <div id="nfl-games-msg" class="msg"></div>
+          <div class="form-row" style="margin-top:10px;">
+            <button class="btn btn-warn"    onclick="adminLockWeek(true)">🔒 Lock This Week</button>
+            <button class="btn btn-outline" onclick="adminLockWeek(false)">🔓 Unlock This Week</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Change Password -->
+      <div class="card">
+        <div class="admin-section">
+          <h3>Security</h3>
+          <div class="form-row">
+            <label>New Password</label>
+            <input type="password" id="new-pw-inp" class="inp" placeholder="New password" style="width:180px"/>
+            <button class="btn btn-danger" onclick="adminChangePassword()">Change Password</button>
+          </div>
+          <div id="pw-msg" class="msg"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- #main -->
+
+<!-- ── STATS MODAL ──────────────────────────────────────────────────────────── -->
+<div id="stats-modal">
+  <div id="stats-box">
+    <button class="close-btn" onclick="closeStats()">×</button>
+    <h2 id="stats-title">Team Stats</h2>
+    <div id="stats-content" style="color:var(--muted);margin-top:12px;">Loading…</div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let state = null;          // full data from server
+let activeUser = null;     // currently selected user
+let activePage = 'nba';
+let activeNFLWeek = null;
+let adminPw = null;
+let evtSource = null;
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+(function init() {
+  connectSSE();
+  bindNavTabs();
+})();
+
+function connectSSE() {
+  if (evtSource) evtSource.close();
+  evtSource = new EventSource('/api/stream');
+  evtSource.onmessage = e => {
+    const { event, payload } = JSON.parse(e.data);
+    handleServerEvent(event, payload);
+  };
+  evtSource.onerror = () => setTimeout(connectSSE, 3000);
+}
+
+function handleServerEvent(event, payload) {
+  if (event === 'init') {
+    state = payload;
+    activeUser = activeUser || state.meta.users[0];
+    fullRender();
+  } else if (event === 'picks_update') {
+    if (!state) return;
+    if (!state.picks[payload.user]) state.picks[payload.user] = { nba: {}, nfl: {} };
+    if (payload.pick === null) {
+      delete state.picks[payload.user][payload.sport][payload.id];
+    } else {
+      state.picks[payload.user][payload.sport][payload.id] = payload.pick;
+    }
+    renderNBABracket();
+    renderNFLWeek();
+    refreshLeaderboard();
+  } else if (event === 'lock_update') {
+    if (!state) return;
+    state.meta.picksLocked = payload.locked;
+    renderHeader();
+    updateAdminButtons();
+  } else if (event === 'live_update') {
+    if (!state) return;
+    state.meta.liveMode = payload.live;
+    renderHeader();
+    updateAdminButtons();
+  } else if (event === 'users_update') {
+    if (!state) return;
+    state.meta.users = payload.users;
+    if (!state.meta.users.includes(activeUser)) activeUser = state.meta.users[0];
+    renderHeader();
+    renderAdminUsers();
+  } else if (event === 'nba_update') {
+    if (!state) return;
+    state.nba = payload.nba;
+    renderNBABracket();
+    refreshLeaderboard();
+    renderAdminNBASeries();
+  } else if (event === 'nfl_update') {
+    if (!state) return;
+    state.nfl.weeks[payload.weekId] = payload.week;
+    renderNFLWeekSelector();
+    renderNFLWeek();
+    refreshLeaderboard();
+  }
+}
+
+// ─── FULL RENDER ─────────────────────────────────────────────────────────────
+function fullRender() {
+  renderHeader();
+  renderNBABracket();
+  renderNFLWeekSelector();
+  if (activeNFLWeek) renderNFLWeek();
+  refreshLeaderboard();
+}
+
+// ─── HEADER ──────────────────────────────────────────────────────────────────
+function renderHeader() {
+  if (!state) return;
+
+  // badges
+  document.getElementById('live-badge').style.display = state.meta.liveMode    ? '' : 'none';
+  document.getElementById('lock-badge').style.display = state.meta.picksLocked ? '' : 'none';
+
+  // user tabs
+  const tabs = document.getElementById('user-tabs');
+  tabs.innerHTML = state.meta.users.map(u =>
+    `<button class="utab ${u===activeUser?'active':''}" onclick="selectUser('${u}')">${u}</button>`
+  ).join('');
+}
+
+function selectUser(u) {
+  activeUser = u;
+  renderHeader();
+  renderNBABracket();
+  renderNFLWeek();
+}
+
+// ─── NAV TABS ─────────────────────────────────────────────────────────────────
+function bindNavTabs() {
+  document.querySelectorAll('.ntab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.ntab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const pg = btn.dataset.page;
+      activePage = pg;
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('page-' + pg).classList.add('active');
+      if (pg === 'leaderboard') refreshLeaderboard();
+    });
+  });
+}
+
+// ─── NBA BRACKET ─────────────────────────────────────────────────────────────
+function renderNBABracket() {
+  if (!state) return;
+  renderConf('east');
+  renderConf('west');
+  renderFinals();
+  updateNBAPickCount();
+}
+
+function renderConf(conf) {
+  const nba = state.nba;
+  const bracket = nba[conf];
+  const el = document.getElementById('bracket-' + conf);
+
+  // Col 1: R1 (4 series), Col 2: R2 (2 series), Col 3: Conf Finals (1 series)
+  el.innerHTML = `
+    <div class="bracket-col" id="${conf}-r1-col">${bracket.r1.map(s => seriesCard(s)).join('')}</div>
+    <div class="bracket-col" id="${conf}-r2-col">${bracket.r2.map(s => seriesCard(s)).join('')}</div>
+    <div class="bracket-col" id="${conf}-r3-col">${bracket.r3.map(s => seriesCard(s)).join('')}</div>
+  `;
+}
+
+function renderFinals() {
+  const f = state.nba.finals;
+  document.getElementById('bracket-finals').innerHTML = seriesCard(f);
+}
+
+function seriesCard(s) {
+  const userPick = (state.picks[activeUser]?.nba || {})[s.id];
+  const topPicked = userPick === s.top.abbr;
+  const botPicked = userPick === s.bot.abbr;
+  const isWinner = (abbr) => s.winner === abbr;
+
+  return `<div class="series-card ${s.locked ? 'locked-series' : ''}" id="series-${s.id}">
+    <div class="series-round-label">${s.round} ${s.locked ? '🔒' : ''}</div>
+    <div class="team-row ${isWinner(s.top.abbr)?'winner-row':''} ${topPicked?'picked-row':''}"
+         onclick="pickNBASeries('${s.id}','${s.top.abbr}')">
+      <span class="seed">${s.top.seed||'?'}</span>
+      <span class="abbr">${s.top.abbr}</span>
+      <span class="team-name">${s.top.name}</span>
+      <span class="wins" style="color:${s.wins_top>=4?'var(--green)':''}">${s.wins_top}</span>
+    </div>
+    <div class="team-row ${isWinner(s.bot.abbr)?'winner-row':''} ${botPicked?'picked-row':''}"
+         onclick="pickNBASeries('${s.id}','${s.bot.abbr}')">
+      <span class="seed">${s.bot.seed||'?'}</span>
+      <span class="abbr">${s.bot.abbr}</span>
+      <span class="team-name">${s.bot.name}</span>
+      <span class="wins" style="color:${s.wins_bot>=4?'var(--green)':''}">${s.wins_bot}</span>
+    </div>
+    ${s.winner ? `<div class="series-winner-tag">✓ ${s.winner}</div>` : ''}
+  </div>`;
+}
+
+function pickNBASeries(id, abbr) {
+  if (!activeUser) return;
+  if (state.meta.picksLocked) { showToast('Picks are locked!', 'err'); return; }
+  apiFetch('/api/pick', { user: activeUser, sport: 'nba', id, pick: abbr })
+    .catch(e => showToast(e.message, 'err'));
+}
+
+function updateNBAPickCount() {
+  if (!state || !activeUser) return;
+  const picks = state.picks[activeUser]?.nba || {};
+  const total = [
+    ...state.nba.east.r1, ...state.nba.east.r2, ...state.nba.east.r3,
+    ...state.nba.west.r1, ...state.nba.west.r2, ...state.nba.west.r3,
+    state.nba.finals
+  ].length;
+  const made = Object.keys(picks).length;
+  document.getElementById('nba-pick-count').textContent = `${made}/${total} picks made`;
+}
+
+// ─── NFL WEEK SELECTOR ────────────────────────────────────────────────────────
+function renderNFLWeekSelector() {
+  if (!state) return;
+  const wrap = document.getElementById('nfl-week-selector');
+  const weeks = state.nfl.weeks;
+
+  const playoffKeys = ['wild_card','divisional','conf_champ','super_bowl'];
+  const order = [
+    ...['pre1','pre2','pre3'],
+    ...[...Array(18)].map((_,i)=>`week${i+1}`),
+    ...playoffKeys
+  ].filter(k => weeks[k]);
+
+  // Group
+  const groups = [
+    { label: 'Preseason',       keys: order.filter(k => weeks[k]?.type === 'preseason') },
+    { label: 'Regular Season',  keys: order.filter(k => weeks[k]?.type === 'regular') },
+    { label: 'Playoffs',        keys: order.filter(k => weeks[k]?.type === 'playoff') }
+  ];
+
+  wrap.innerHTML = groups.map(g => `
+    <div style="width:100%;font-size:.65rem;color:var(--muted);font-weight:800;letter-spacing:.5px;
+    text-transform:uppercase;padding:4px 0 2px;">${g.label}</div>
+    ${g.keys.map(k => {
+      const w = weeks[k];
+      const hasResult = w.games.some(gm => gm.winner);
+      const isPlay = w.type === 'playoff';
+      return `<button class="week-btn ${isPlay?'playoff-week':''} ${hasResult?'has-result':''} ${k===activeNFLWeek?'active':''}"
+        onclick="selectNFLWeek('${k}')">${w.label}</button>`;
+    }).join('')}
+  `).join('');
+}
+
+function selectNFLWeek(key) {
+  activeNFLWeek = key;
+  renderNFLWeekSelector();
+  renderNFLWeek();
+}
+
+function renderNFLWeek() {
+  if (!state || !activeNFLWeek) return;
+  const week = state.nfl.weeks[activeNFLWeek];
+  if (!week) return;
+  const userPicks = state.picks[activeUser]?.nfl || {};
+  const wrap = document.getElementById('nfl-games-wrap');
+
+  const html = week.games.map(game => {
+    const pick = userPicks[game.id];
+    const awayPicked = pick === game.away.abbr;
+    const homePicked = pick === game.home.abbr;
+    const awayWon = game.winner === game.away.abbr;
+    const homeWon = game.winner === game.home.abbr;
+    const correct = (awayPicked && awayWon) || (homePicked && homeWon);
+    const wrong   = pick && game.winner && !correct;
+
+    let pickTag = '';
+    if (pick) {
+      pickTag = `<span class="game-pick-indicator ${correct?'correct':''} ${wrong?'wrong':''}">
+        ✓ ${pick}${correct?' ✅':wrong?' ❌':''}
+      </span>`;
+    }
+
+    const awayScore = game.score_away !== null ? game.score_away : '';
+    const homeScore = game.score_home !== null ? game.score_home : '';
+
+    return `<div class="game-row ${awayPicked?'picked-away':''} ${homePicked?'picked-home':''}"
+        style="cursor:${state.meta.picksLocked||week.locked?'default':'pointer'}">
+      <div class="game-team left" onclick="pickNFLGame('${game.id}','${game.away.abbr}')">
+        <span class="team-abbr-badge" style="${awayWon?'background:rgba(34,197,94,.15);color:var(--green)':''}">
+          ${game.away.abbr}
+        </span>
+        <span style="font-size:.78rem;color:var(--muted)">${game.away.name||''}</span>
+      </div>
+      <div class="game-score">
+        <span class="score-num" style="${awayWon?'color:var(--green)':''}">${awayScore}</span>
+        <span class="game-sep">@</span>
+        <span class="score-num" style="${homeWon?'color:var(--green)':''}">${homeScore}</span>
+      </div>
+      <div class="game-team right" onclick="pickNFLGame('${game.id}','${game.home.abbr}')">
+        <span style="font-size:.78rem;color:var(--muted)">${game.home.name||''}</span>
+        <span class="team-abbr-badge" style="${homeWon?'background:rgba(34,197,94,.15);color:var(--green)':''}">
+          ${game.home.abbr}
+        </span>
+      </div>
+      <span class="game-status ${game.status}">${game.status.toUpperCase()}</span>
+      ${pickTag}
+      <button class="btn btn-outline" style="padding:3px 8px;font-size:.65rem;"
+        onclick="event.stopPropagation();showTeamStats('${game.away.abbr}','nfl')">📊</button>
+      <button class="btn btn-outline" style="padding:3px 8px;font-size:.65rem;"
+        onclick="event.stopPropagation();showTeamStats('${game.home.abbr}','nfl')">📊</button>
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <span style="font-weight:800;font-size:.95rem;">${week.label}</span>
+      ${week.locked ? '<span class="badge locked dot" style="font-size:.65rem">LOCKED</span>' : ''}
+    </div>
+    ${html || '<div style="color:var(--muted);padding:20px;text-align:center">No games this week</div>'}
+  `;
+}
+
+function pickNFLGame(id, abbr) {
+  if (!activeUser) return;
+  if (state.meta.picksLocked) { showToast('Picks are locked!', 'err'); return; }
+  const week = state.nfl.weeks[activeNFLWeek];
+  if (week?.locked)            { showToast('This week is locked!', 'err'); return; }
+  apiFetch('/api/pick', { user: activeUser, sport: 'nfl', id, pick: abbr })
+    .catch(e => showToast(e.message, 'err'));
+}
+
+// ─── LEADERBOARD ─────────────────────────────────────────────────────────────
+async function refreshLeaderboard() {
+  if (activePage !== 'leaderboard') return;
+  try {
+    const board = await apiFetch('/api/leaderboard', null, 'GET');
+    renderLeaderboard(board);
+  } catch (_) {}
+}
+
+function renderLeaderboard(board) {
+  const rankClass = r => r===1?'gold':r===2?'silver':r===3?'bronze':'';
+  const rows = board.map(r => `
+    <tr>
+      <td><span class="rank-num ${rankClass(r.rank)}">${r.rank}</span></td>
+      <td style="font-weight:700;font-size:1rem">${r.user}</td>
+      <td><span class="pts-big" style="color:var(--nba)">${r.nba}</span></td>
+      <td><span class="pts-big" style="color:var(--nfl)">${r.nfl}</span></td>
+      <td><span class="pts-big">${r.total}</span></td>
+    </tr>
+  `).join('');
+
+  document.getElementById('leaderboard-wrap').innerHTML = `
+    <table class="lb-table">
+      <thead><tr><th>Rank</th><th>Player</th><th>🏀 NBA</th><th>🏈 NFL</th><th>Total</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+
+  // Mini boards
+  const nbaSorted = [...board].sort((a,b) => b.nba - a.nba);
+  const nflSorted = [...board].sort((a,b) => b.nfl - a.nfl);
+  document.getElementById('lb-nba-wrap').innerHTML = miniBoard(nbaSorted, 'nba');
+  document.getElementById('lb-nfl-wrap').innerHTML = miniBoard(nflSorted, 'nfl');
+}
+
+function miniBoard(board, key) {
+  return `<table class="lb-table">
+    <thead><tr><th>#</th><th>Player</th><th>Pts</th></tr></thead>
+    <tbody>${board.map((r,i) => `<tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td>${r.user}</td>
+      <td style="font-weight:800">${r[key]}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+// ─── TEAM STATS MODAL ─────────────────────────────────────────────────────────
+async function showTeamStats(abbr, sport) {
+  if (!state) return;
+  if (!state.meta.liveMode) {
+    showLocalStats(abbr, sport);
+    return;
+  }
+  document.getElementById('stats-modal').classList.add('open');
+  document.getElementById('stats-title').textContent = `${abbr} Stats`;
+  document.getElementById('stats-content').innerHTML = '<div style="color:var(--muted)">Loading live stats…</div>';
+
+  try {
+    const endpoint = sport === 'nba'
+      ? `/api/live/nba/team/${abbr.toLowerCase()}`
+      : `/api/live/nfl/team/${abbr.toLowerCase()}`;
+    const data = await apiFetch(endpoint, null, 'GET');
+    renderTeamStats(abbr, sport, data);
+  } catch (e) {
+    document.getElementById('stats-content').innerHTML = `<div style="color:var(--red)">Could not load stats: ${e.message}</div>`;
+  }
+}
+
+function showLocalStats(abbr, sport) {
+  document.getElementById('stats-modal').classList.add('open');
+  document.getElementById('stats-title').textContent = `${abbr}`;
+
+  if (sport === 'nfl') {
+    const teamInfo = state.nfl.teams[abbr];
+    if (teamInfo) {
+      document.getElementById('stats-content').innerHTML = `
+        <div class="stat-grid">
+          <div class="stat-item"><div class="stat-label">Team</div><div class="stat-value">${teamInfo.name}</div></div>
+          <div class="stat-item"><div class="stat-label">Conference</div><div class="stat-value">${teamInfo.conf}</div></div>
+          <div class="stat-item"><div class="stat-label">Division</div><div class="stat-value">${teamInfo.div}</div></div>
+          <div class="stat-item"><div class="stat-label">Abbr</div><div class="stat-value">${abbr}</div></div>
+        </div>
+        <p style="margin-top:12px;font-size:.75rem;color:var(--muted)">Enable Live Mode in admin for detailed stats.</p>`;
+      return;
+    }
+  }
+
+  if (sport === 'nba') {
+    const allSeries = [
+      ...state.nba.east.r1, ...state.nba.east.r2, ...state.nba.east.r3,
+      ...state.nba.west.r1, ...state.nba.west.r2, ...state.nba.west.r3,
+      state.nba.finals
+    ];
+    const teamSeries = allSeries.filter(s => s.top.abbr === abbr || s.bot.abbr === abbr);
+    let seriesHtml = teamSeries.map(s => {
+      const isTop = s.top.abbr === abbr;
+      const myWins = isTop ? s.wins_top : s.wins_bot;
+      const oppWins = isTop ? s.wins_bot : s.wins_top;
+      const opp = isTop ? s.bot : s.top;
+      return `<div class="stat-item">
+        <div class="stat-label">${s.round}</div>
+        <div class="stat-value">vs ${opp.abbr}: ${myWins}-${oppWins}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('stats-content').innerHTML = `
+      <div class="stat-grid">${seriesHtml || '<div class="stat-item"><div class="stat-label">No series data</div></div>'}</div>
+      <p style="margin-top:12px;font-size:.75rem;color:var(--muted)">Enable Live Mode in admin for detailed stats.</p>`;
+    return;
+  }
+
+  document.getElementById('stats-content').innerHTML = '<p style="color:var(--muted)">Enable Live Mode for detailed stats.</p>';
+}
+
+function renderTeamStats(abbr, sport, data) {
+  // Parse ESPN team response
+  try {
+    const team = data.team || data;
+    const record = team.record?.items?.[0]?.summary || 'N/A';
+    const location = team.location || team.displayName || abbr;
+    const color = '#' + (team.color || '5b6af0');
+
+    // Build stat items from team stats if available
+    const statItems = (team.statistics?.splits?.categories || []).flatMap(cat =>
+      (cat.stats || []).map(stat =>
+        `<div class="stat-item"><div class="stat-label">${stat.shortDisplayName || stat.name}</div>
+        <div class="stat-value">${stat.displayValue || stat.value}</div></div>`
+      )
+    ).slice(0, 12);
+
+    document.getElementById('stats-title').innerHTML =
+      `<span style="color:#${team.color||'fff'}">${location}</span>`;
+
+    document.getElementById('stats-content').innerHTML = `
+      <div class="stat-grid">
+        <div class="stat-item"><div class="stat-label">Record</div><div class="stat-value">${record}</div></div>
+        <div class="stat-item"><div class="stat-label">Abbreviation</div><div class="stat-value">${abbr}</div></div>
+        ${statItems.join('') || '<div class="stat-item"><div class="stat-label">No detailed stats available</div></div>'}
+      </div>`;
+  } catch (e) {
+    document.getElementById('stats-content').innerHTML = `<div style="color:var(--muted)">Stats unavailable. <a href="https://www.espn.com" target="_blank">View on ESPN ↗</a></div>`;
+  }
+}
+
+function closeStats() {
+  document.getElementById('stats-modal').classList.remove('open');
+}
+
+// ─── ADMIN ────────────────────────────────────────────────────────────────────
+function adminLogin() {
+  const pw = document.getElementById('admin-pw-inp').value;
+  // Validate against state
+  if (!state) return;
+  if (pw !== state.meta.adminPassword) {
+    showAdminMsg('admin-login-msg', 'Wrong password', 'err');
+    return;
+  }
+  adminPw = pw;
+  document.getElementById('admin-login').style.display = 'none';
+  document.getElementById('admin-panel').style.display = 'block';
+  renderAdminPanel();
+}
+
+function adminLogout() {
+  adminPw = null;
+  document.getElementById('admin-login').style.display = '';
+  document.getElementById('admin-panel').style.display = 'none';
+  document.getElementById('admin-pw-inp').value = '';
+}
+
+function renderAdminPanel() {
+  updateAdminButtons();
+  renderAdminUsers();
+  renderAdminNBASeries();
+  renderAdminNFLWeekSelector();
+}
+
+function updateAdminButtons() {
+  if (!state) return;
+  const btnLock = document.getElementById('btn-lock');
+  const btnLive = document.getElementById('btn-live');
+  if (!btnLock || !btnLive) return;
+  btnLock.textContent = state.meta.picksLocked ? '🔓 Unlock Picks' : '🔒 Lock Picks';
+  btnLock.className   = state.meta.picksLocked ? 'btn btn-success' : 'btn btn-warn';
+  btnLive.textContent = state.meta.liveMode     ? '📡 Disable Live' : '📡 Enable Live';
+  btnLive.className   = state.meta.liveMode     ? 'btn btn-danger'  : 'btn btn-success';
+}
+
+async function adminToggleLock() {
+  const locked = !state.meta.picksLocked;
+  await apiFetch('/api/admin/lock', { password: adminPw, locked });
+  showAdminMsg('ctrl-msg', locked ? 'Picks locked' : 'Picks unlocked', 'ok');
+}
+
+async function adminToggleLive() {
+  const live = !state.meta.liveMode;
+  await apiFetch('/api/admin/live', { password: adminPw, live });
+  showAdminMsg('ctrl-msg', live ? 'Live mode ON' : 'Live mode OFF', 'ok');
+}
+
+function renderAdminUsers() {
+  if (!state) return;
+  const list = document.getElementById('admin-user-list');
+  if (!list) return;
+  list.innerHTML = state.meta.users.map(u =>
+    `<div class="user-chip">${u}
+      <button onclick="adminRemoveUser('${u}')" title="Remove">×</button>
+    </div>`
+  ).join('');
+}
+
+async function adminAddUser() {
+  const name = document.getElementById('new-user-inp').value.trim();
+  if (!name) return;
+  await apiFetch('/api/admin/users/add', { password: adminPw, username: name });
+  document.getElementById('new-user-inp').value = '';
+  showAdminMsg('user-msg', `Added ${name}`, 'ok');
+}
+
+async function adminRemoveUser(name) {
+  if (!confirm(`Remove user "${name}"?`)) return;
+  await apiFetch('/api/admin/users/remove', { password: adminPw, username: name });
+  showAdminMsg('user-msg', `Removed ${name}`, 'ok');
+}
+
+async function adminChangePassword() {
+  const np = document.getElementById('new-pw-inp').value.trim();
+  if (!np) return;
+  await apiFetch('/api/admin/password', { password: adminPw, newPassword: np });
+  adminPw = np;
+  document.getElementById('new-pw-inp').value = '';
+  showAdminMsg('pw-msg', 'Password updated', 'ok');
+}
+
+// ── NBA Series Admin ──────────────────────────────────────────────────────────
+function renderAdminNBASeries() {
+  if (!state) return;
+  const el = document.getElementById('nba-series-admin');
+  if (!el) return;
+  const allSeries = [
+    ...state.nba.east.r1, ...state.nba.east.r2, ...state.nba.east.r3,
+    ...state.nba.west.r1, ...state.nba.west.r2, ...state.nba.west.r3,
+    state.nba.finals
+  ];
+  el.innerHTML = allSeries.map(s => `
+    <div class="series-admin-row">
+      <span class="sid">${s.id}</span>
+      <span style="font-size:.78rem;min-width:80px">${s.top.abbr} vs ${s.bot.abbr}</span>
+      <input type="number" class="inp inp-sm" placeholder="W1" min="0" max="4" value="${s.wins_top}"
+        onchange="adminUpdateSeries('${s.id}','wins_top',+this.value)" title="${s.top.abbr} wins"/>
+      <span style="color:var(--muted);font-size:.75rem">–</span>
+      <input type="number" class="inp inp-sm" placeholder="W2" min="0" max="4" value="${s.wins_bot}"
+        onchange="adminUpdateSeries('${s.id}','wins_bot',+this.value)" title="${s.bot.abbr} wins"/>
+      <select class="inp" style="width:100px" onchange="adminSetSeriesWinner('${s.id}',this.value)">
+        <option value="">Winner…</option>
+        <option value="${s.top.abbr}" ${s.winner===s.top.abbr?'selected':''}>${s.top.abbr}</option>
+        <option value="${s.bot.abbr}" ${s.winner===s.bot.abbr?'selected':''}>${s.bot.abbr}</option>
+      </select>
+      <label style="font-size:.7rem;color:var(--muted)">
+        <input type="checkbox" ${s.locked?'checked':''} onchange="adminLockSeries('${s.id}',this.checked)"> Lock
+      </label>
+    </div>
+  `).join('');
+}
+
+async function adminUpdateSeries(id, field, val) {
+  await apiFetch('/api/admin/nba/series', { password: adminPw, id, [field]: val });
+  showAdminMsg('nba-series-msg', 'Saved', 'ok');
+}
+
+async function adminSetSeriesWinner(id, winner) {
+  if (!winner) return;
+  await apiFetch('/api/admin/nba/series', { password: adminPw, id, winner });
+  showAdminMsg('nba-series-msg', `Winner set: ${winner}`, 'ok');
+}
+
+async function adminLockSeries(id, locked) {
+  await apiFetch('/api/admin/nba/series', { password: adminPw, id, locked });
+}
+
+// ── NFL Admin ─────────────────────────────────────────────────────────────────
+function renderAdminNFLWeekSelector() {
+  if (!state) return;
+  const sel = document.getElementById('admin-nfl-week');
+  if (!sel) return;
+  sel.innerHTML = Object.entries(state.nfl.weeks).map(([k,w]) =>
+    `<option value="${k}">${w.label}</option>`
+  ).join('');
+  renderAdminNFLGames();
+}
+
+function renderAdminNFLGames() {
+  if (!state) return;
+  const weekId = document.getElementById('admin-nfl-week').value;
+  const week = state.nfl.weeks[weekId];
+  if (!week) return;
+
+  const teamOpts = `<option value="TBD">TBD</option>` +
+    Object.keys(state.nfl.teams).sort().map(a =>
+      `<option value="${a}">${a} – ${state.nfl.teams[a].name}</option>`
+    ).join('');
+
+  document.getElementById('nfl-games-admin').innerHTML = week.games.map(g => `
+    <div class="series-admin-row" style="flex-wrap:wrap;gap:6px;">
+      <span class="sid" style="min-width:80px">${g.id}</span>
+      <select class="inp" style="width:110px" onchange="adminSaveNFLGame('${weekId}','${g.id}','away_abbr',this.value)">
+        ${teamOpts.replace(`value="${g.away.abbr}"`, `value="${g.away.abbr}" selected`)}
+      </select>
+      <span style="color:var(--muted)">@</span>
+      <select class="inp" style="width:110px" onchange="adminSaveNFLGame('${weekId}','${g.id}','home_abbr',this.value)">
+        ${teamOpts.replace(`value="${g.home.abbr}"`, `value="${g.home.abbr}" selected`)}
+      </select>
+      <input type="number" class="inp inp-sm" placeholder="Sc Away" value="${g.score_away??''}"
+        onchange="adminSaveNFLGame('${weekId}','${g.id}','score_away',+this.value||null)"/>
+      <input type="number" class="inp inp-sm" placeholder="Sc Home" value="${g.score_home??''}"
+        onchange="adminSaveNFLGame('${weekId}','${g.id}','score_home',+this.value||null)"/>
+      <select class="inp" style="width:90px" onchange="adminSaveNFLGame('${weekId}','${g.id}','status',this.value)">
+        <option value="pre"   ${g.status==='pre'  ?'selected':''}>Pre</option>
+        <option value="live"  ${g.status==='live' ?'selected':''}>Live</option>
+        <option value="final" ${g.status==='final'?'selected':''}>Final</option>
+      </select>
+      <select class="inp" style="width:90px" onchange="adminSaveNFLGame('${weekId}','${g.id}','winner',this.value)">
+        <option value="">Winner…</option>
+        <option value="${g.away.abbr}" ${g.winner===g.away.abbr?'selected':''}>${g.away.abbr}</option>
+        <option value="${g.home.abbr}" ${g.winner===g.home.abbr?'selected':''}>${g.home.abbr}</option>
+      </select>
+    </div>
+  `).join('');
+}
+
+async function adminSaveNFLGame(weekId, gameId, field, value) {
+  const week = state.nfl.weeks[weekId];
+  const game = week.games.find(g => g.id === gameId);
+  if (!game) return;
+
+  let body = { password: adminPw, weekId, gameId };
+
+  if (field === 'away_abbr') {
+    const abbr = value;
+    const name = state.nfl.teams[abbr]?.name || abbr;
+    body.away = { abbr, name };
+  } else if (field === 'home_abbr') {
+    const abbr = value;
+    const name = state.nfl.teams[abbr]?.name || abbr;
+    body.home = { abbr, name };
+  } else if (field === 'score_away') { body.score_away = value; }
+  else if (field === 'score_home')   { body.score_home = value; }
+  else if (field === 'status')       { body.status = value; }
+  else if (field === 'winner')       { body.winner = value; }
+
+  await apiFetch('/api/admin/nfl/game', body);
+  showAdminMsg('nfl-games-msg', 'Game saved', 'ok');
+}
+
+async function adminLockWeek(lock) {
+  const weekId = document.getElementById('admin-nfl-week').value;
+  await apiFetch('/api/admin/nfl/week/lock', { password: adminPw, weekId, locked: lock });
+  showAdminMsg('nfl-games-msg', lock ? 'Week locked' : 'Week unlocked', 'ok');
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+async function apiFetch(url, body, method) {
+  const m = method || (body ? 'POST' : 'GET');
+  const opts = { method: m, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Request failed');
+  return json;
+}
+
+function showAdminMsg(id, msg, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'msg ' + type;
+  setTimeout(() => { el.className = 'msg'; }, 3000);
+}
+
+let toastTimer;
+function showToast(msg, type) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:999;padding:10px 18px;
+      border-radius:8px;font-size:.85rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.5);transition:opacity .3s`;
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = type === 'err' ? '#3a1a1a' : '#1a3a1a';
+  t.style.color       = type === 'err' ? 'var(--red)' : 'var(--green)';
+  t.style.border      = `1px solid ${type==='err'?'var(--red)':'var(--green)'}`;
+  t.style.opacity = '1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 3000);
+}
+
+// Close stats modal on backdrop click
+document.getElementById('stats-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('stats-modal')) closeStats();
+});
+</script>
+</body>
+</html>

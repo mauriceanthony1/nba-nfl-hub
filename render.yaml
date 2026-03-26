@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: nba-nfl-hub
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    disk:
+      name: picks-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
