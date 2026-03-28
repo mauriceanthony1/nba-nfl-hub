@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>🏀🏈 Playoffs Hub 2026</title>
+<title>🏀🏈🎓 Sports Hub 2026</title>
 <style>
 /* ─── RESET & BASE ──────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -21,6 +21,7 @@
   --muted:   #7c8ab8;
   --nba:     #c9a227;
   --nfl:     #3a7bd5;
+  --ncaa:    #e8874a;
   --radius:  8px;
   --shadow:  0 4px 24px rgba(0,0,0,.45);
 }
@@ -57,8 +58,36 @@ input, select { font: inherit; }
   transition: all .15s; background: none; border-top: none; border-left: none; border-right: none; }
 .ntab:hover  { color: var(--text); }
 .ntab.active { color: var(--accent); border-bottom-color: var(--accent); }
-.ntab.nba-tab.active { color: var(--nba); border-bottom-color: var(--nba); }
-.ntab.nfl-tab.active { color: var(--nfl); border-bottom-color: var(--nfl); }
+.ntab.nba-tab.active  { color: var(--nba);  border-bottom-color: var(--nba); }
+.ntab.nfl-tab.active  { color: var(--nfl);  border-bottom-color: var(--nfl); }
+.ntab.ncaa-tab.active { color: var(--ncaa); border-bottom-color: var(--ncaa); }
+
+/* ─── NCAA BRACKET ───────────────────────────────────────────────────────────── */
+.ncaa-bracket-scroll { overflow-x: auto; }
+.ncaa-bracket-row { display: flex; gap: 6px; min-width: 640px; }
+.ncaa-col { display: flex; flex-direction: column; justify-content: space-around; gap: 4px; flex: 1; }
+.nc-game {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden; margin-bottom: 3px;
+}
+.nc-row {
+  display: flex; align-items: center; gap: 5px; padding: 5px 8px;
+  cursor: pointer; transition: background .1s; font-size: .78rem;
+}
+.nc-row:first-child { border-bottom: 1px solid var(--border); }
+.nc-row:hover { background: rgba(255,255,255,.05); }
+.nc-row.nc-win  { background: rgba(34,197,94,.1); }
+.nc-row.nc-pick { outline: 2px solid var(--ncaa); outline-offset: -2px; }
+.nc-row.nc-tbd  { color: var(--muted); cursor: default; }
+.nc-seed { font-size: .6rem; color: var(--muted); min-width: 14px; }
+.nc-team { flex: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nc-correct { color: var(--green); font-size: .7rem; margin-left: auto; }
+.nc-wrong   { color: var(--red);   font-size: .7rem; margin-left: auto; }
+.ncaa-round-hdr { display: flex; gap: 6px; padding: 0 0 4px; }
+.ncaa-round-hdr span { flex: 1; text-align: center; font-size: .6rem; font-weight: 800;
+  color: var(--muted); letter-spacing: .5px; text-transform: uppercase; }
+.ncaa-region-label { font-size: .75rem; font-weight: 800; letter-spacing: 1px;
+  text-transform: uppercase; padding: 4px 10px 8px; color: var(--ncaa); }
 
 /* ─── MAIN ──────────────────────────────────────────────────────────────────── */
 #main { padding: 20px; min-height: calc(100vh - 110px); }
@@ -264,7 +293,7 @@ input, select { font: inherit; }
 
 <!-- ── HEADER ──────────────────────────────────────────────────────────────── -->
 <div id="header">
-  <h1>🏀🏈 Playoffs Hub <span>2026</span></h1>
+  <h1>🏀🏈🎓 Sports Hub <span>2026</span></h1>
   <div id="live-badge" class="badge live dot" style="display:none">LIVE</div>
   <div id="lock-badge" class="badge locked dot" style="display:none">LOCKED</div>
   <div id="user-tabs"></div>
@@ -274,6 +303,7 @@ input, select { font: inherit; }
 <div id="nav">
   <button class="ntab nba-tab active" data-page="nba">🏀 NBA Playoffs</button>
   <button class="ntab nfl-tab"        data-page="nfl">🏈 NFL 2026-27</button>
+  <button class="ntab ncaa-tab"       data-page="ncaa">🎓 NCAA Bracket</button>
   <button class="ntab"                data-page="leaderboard">🏆 Leaderboard</button>
   <button class="ntab"                data-page="admin">⚙️ Admin</button>
 </div>
@@ -329,6 +359,59 @@ input, select { font: inherit; }
     </div>
   </div>
 
+  <!-- ── NCAA BRACKET ──────────────────────────────────────────────────────── -->
+  <div id="page-ncaa" class="page">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+      <span style="font-size:.75rem;color:var(--muted);">Click a team to pick · Picks cascade automatically</span>
+      <span id="ncaa-pick-count" style="margin-left:auto;font-size:.75rem;color:var(--ncaa);"></span>
+      <span id="ncaa-lock-badge" class="badge locked dot" style="display:none;font-size:.7rem">LOCKED</span>
+    </div>
+
+    <!-- EAST -->
+    <div class="card" style="padding:12px 8px;">
+      <div class="ncaa-region-label">🔵 EAST</div>
+      <div class="ncaa-round-hdr">
+        <span>R64</span><span>R32</span><span>S16</span><span>E8</span>
+      </div>
+      <div class="ncaa-bracket-scroll"><div id="ncaa-region-EAST"></div></div>
+    </div>
+
+    <!-- WEST -->
+    <div class="card" style="padding:12px 8px;">
+      <div class="ncaa-region-label">🔴 WEST</div>
+      <div class="ncaa-round-hdr">
+        <span>R64</span><span>R32</span><span>S16</span><span>E8</span>
+      </div>
+      <div class="ncaa-bracket-scroll"><div id="ncaa-region-WEST"></div></div>
+    </div>
+
+    <!-- SOUTH -->
+    <div class="card" style="padding:12px 8px;">
+      <div class="ncaa-region-label">🟢 SOUTH</div>
+      <div class="ncaa-round-hdr">
+        <span>R64</span><span>R32</span><span>S16</span><span>E8</span>
+      </div>
+      <div class="ncaa-bracket-scroll"><div id="ncaa-region-SOUTH"></div></div>
+    </div>
+
+    <!-- MIDWEST -->
+    <div class="card" style="padding:12px 8px;">
+      <div class="ncaa-region-label">🟡 MIDWEST</div>
+      <div class="ncaa-round-hdr">
+        <span>R64</span><span>R32</span><span>S16</span><span>E8</span>
+      </div>
+      <div class="ncaa-bracket-scroll"><div id="ncaa-region-MIDWEST"></div></div>
+    </div>
+
+    <!-- Final Four + Championship -->
+    <div class="card">
+      <div style="text-align:center;font-weight:800;font-size:1rem;color:var(--ncaa);margin-bottom:12px;">
+        🏆 FINAL FOUR &amp; CHAMPIONSHIP
+      </div>
+      <div id="ncaa-ff-wrap"></div>
+    </div>
+  </div>
+
   <!-- ── LEADERBOARD ────────────────────────────────────────────────────────── -->
   <div id="page-leaderboard" class="page">
     <div class="card">
@@ -337,7 +420,7 @@ input, select { font: inherit; }
         <div style="color:var(--muted);padding:20px;text-align:center;">Loading…</div>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
       <div class="card">
         <h2>🏀 NBA Points</h2>
         <div id="lb-nba-wrap"></div>
@@ -345,6 +428,10 @@ input, select { font: inherit; }
       <div class="card">
         <h2>🏈 NFL Points</h2>
         <div id="lb-nfl-wrap"></div>
+      </div>
+      <div class="card">
+        <h2>🎓 NCAA Points</h2>
+        <div id="lb-ncaa-wrap"></div>
       </div>
     </div>
   </div>
@@ -414,6 +501,29 @@ input, select { font: inherit; }
             <button class="btn btn-warn"    onclick="adminLockWeek(true)">🔒 Lock This Week</button>
             <button class="btn btn-outline" onclick="adminLockWeek(false)">🔓 Unlock This Week</button>
           </div>
+        </div>
+      </div>
+
+      <!-- NCAA Admin -->
+      <div class="card">
+        <div class="admin-section">
+          <h3>🎓 NCAA Controls</h3>
+          <div class="form-row">
+            <button class="btn btn-warn" id="btn-ncaa-lock" onclick="adminToggleNcaaLock()">🔒 Lock NCAA Picks</button>
+          </div>
+          <div id="ncaa-ctrl-msg" class="msg"></div>
+          <h3 style="margin-top:12px;">Set NCAA Results</h3>
+          <div class="form-row" style="flex-wrap:wrap;gap:8px;">
+            <select id="ncaa-res-round" class="inp" style="width:90px;">
+              <option value="R64">R64</option><option value="R32">R32</option>
+              <option value="S16">S16</option><option value="E8">E8</option>
+              <option value="F4">F4</option><option value="CHIP">CHIP</option>
+            </select>
+            <input id="ncaa-res-gi" type="number" class="inp inp-sm" placeholder="Idx" min="0" title="Game index (0-based)"/>
+            <input id="ncaa-res-winner" class="inp" placeholder="Winner team name" style="width:180px"/>
+            <button class="btn btn-primary" onclick="adminSetNcaaResult()">Set Result</button>
+          </div>
+          <div id="ncaa-res-msg" class="msg"></div>
         </div>
       </div>
 
@@ -513,6 +623,28 @@ function handleServerEvent(event, payload) {
     renderNFLWeekSelector();
     renderNFLWeek();
     refreshLeaderboard();
+  } else if (event === 'nfl_update_all') {
+    if (!state) return;
+    state.nfl.weeks = payload.weeks;
+    renderNFLWeekSelector();
+    renderNFLWeek();
+    refreshLeaderboard();
+  } else if (event === 'ncaa_picks_update') {
+    if (!state || !state.ncaa) return;
+    if (!state.ncaa.picks) state.ncaa.picks = {};
+    state.ncaa.picks[payload.user] = payload.picks;
+    if (activePage === 'ncaa') renderNCAABracket();
+    if (activePage === 'leaderboard') refreshLeaderboard();
+  } else if (event === 'ncaa_results_update') {
+    if (!state || !state.ncaa) return;
+    state.ncaa.results = payload.results;
+    if (activePage === 'ncaa') renderNCAABracket();
+    if (activePage === 'leaderboard') refreshLeaderboard();
+  } else if (event === 'ncaa_lock_update') {
+    if (!state || !state.ncaa) return;
+    state.ncaa.picksLocked = payload.locked;
+    renderNCAAHeader();
+    updateNcaaAdminButtons();
   }
 }
 
@@ -522,6 +654,8 @@ function fullRender() {
   renderNBABracket();
   renderNFLWeekSelector();
   if (activeNFLWeek) renderNFLWeek();
+  if (activePage === 'ncaa') renderNCAABracket();
+  renderNCAAHeader();
   refreshLeaderboard();
 }
 
@@ -545,6 +679,7 @@ function selectUser(u) {
   renderHeader();
   renderNBABracket();
   renderNFLWeek();
+  if (activePage === 'ncaa') renderNCAABracket();
 }
 
 // ─── NAV TABS ─────────────────────────────────────────────────────────────────
@@ -558,6 +693,7 @@ function bindNavTabs() {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       document.getElementById('page-' + pg).classList.add('active');
       if (pg === 'leaderboard') refreshLeaderboard();
+      if (pg === 'ncaa') renderNCAABracket();
     });
   });
 }
@@ -762,21 +898,24 @@ function renderLeaderboard(board) {
       <td style="font-weight:700;font-size:1rem">${r.user}</td>
       <td><span class="pts-big" style="color:var(--nba)">${r.nba}</span></td>
       <td><span class="pts-big" style="color:var(--nfl)">${r.nfl}</span></td>
+      <td><span class="pts-big" style="color:var(--ncaa)">${r.ncaa||0}</span></td>
       <td><span class="pts-big">${r.total}</span></td>
     </tr>
   `).join('');
 
   document.getElementById('leaderboard-wrap').innerHTML = `
     <table class="lb-table">
-      <thead><tr><th>Rank</th><th>Player</th><th>🏀 NBA</th><th>🏈 NFL</th><th>Total</th></tr></thead>
+      <thead><tr><th>Rank</th><th>Player</th><th>🏀 NBA</th><th>🏈 NFL</th><th>🎓 NCAA</th><th>Total</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 
   // Mini boards
-  const nbaSorted = [...board].sort((a,b) => b.nba - a.nba);
-  const nflSorted = [...board].sort((a,b) => b.nfl - a.nfl);
-  document.getElementById('lb-nba-wrap').innerHTML = miniBoard(nbaSorted, 'nba');
-  document.getElementById('lb-nfl-wrap').innerHTML = miniBoard(nflSorted, 'nfl');
+  const nbaSorted  = [...board].sort((a,b) => b.nba  - a.nba);
+  const nflSorted  = [...board].sort((a,b) => b.nfl  - a.nfl);
+  const ncaaSorted = [...board].sort((a,b) => (b.ncaa||0) - (a.ncaa||0));
+  document.getElementById('lb-nba-wrap').innerHTML  = miniBoard(nbaSorted,  'nba');
+  document.getElementById('lb-nfl-wrap').innerHTML  = miniBoard(nflSorted,  'nfl');
+  document.getElementById('lb-ncaa-wrap').innerHTML = miniBoard(ncaaSorted, 'ncaa');
 }
 
 function miniBoard(board, key) {
@@ -918,6 +1057,15 @@ function renderAdminPanel() {
   renderAdminUsers();
   renderAdminNBASeries();
   renderAdminNFLWeekSelector();
+  updateNcaaAdminButtons();
+}
+
+function updateNcaaAdminButtons() {
+  if (!state || !state.ncaa) return;
+  const btn = document.getElementById('btn-ncaa-lock');
+  if (!btn) return;
+  btn.textContent = state.ncaa.picksLocked ? '🔓 Unlock NCAA Picks' : '🔒 Lock NCAA Picks';
+  btn.className   = state.ncaa.picksLocked ? 'btn btn-success' : 'btn btn-warn';
 }
 
 function updateAdminButtons() {
@@ -1145,6 +1293,292 @@ function showToast(msg, type) {
 document.getElementById('stats-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('stats-modal')) closeStats();
 });
+
+// ─── NCAA DATA CONSTANTS ──────────────────────────────────────────────────────
+const NCAA_BRACKET = {
+  EAST: [
+    { id:'E1', seed1:1,  team1:'Duke',          seed2:16, team2:'Siena'            },
+    { id:'E2', seed1:8,  team1:'Ohio State',     seed2:9,  team2:'TCU'              },
+    { id:'E3', seed1:5,  team1:'St Johns',       seed2:12, team2:'Northern Iowa'    },
+    { id:'E4', seed1:4,  team1:'Kansas',         seed2:13, team2:'Cal Baptist'      },
+    { id:'E5', seed1:6,  team1:'Louisville',     seed2:11, team2:'South Florida'    },
+    { id:'E6', seed1:3,  team1:'Michigan State', seed2:14, team2:'North Dakota State'},
+    { id:'E7', seed1:7,  team1:'UCLA',           seed2:10, team2:'UCF'              },
+    { id:'E8', seed1:2,  team1:'UConn',          seed2:15, team2:'Furman'           },
+  ],
+  WEST: [
+    { id:'W1', seed1:1,  team1:'Arizona',        seed2:16, team2:'LIU'              },
+    { id:'W2', seed1:8,  team1:'Villanova',      seed2:9,  team2:'Utah State'       },
+    { id:'W3', seed1:5,  team1:'Wisconsin',      seed2:12, team2:'High Point'       },
+    { id:'W4', seed1:4,  team1:'Arkansas',       seed2:13, team2:'Hawaii'           },
+    { id:'W5', seed1:6,  team1:'BYU',            seed2:11, team2:'Texas'            },
+    { id:'W6', seed1:3,  team1:'Gonzaga',        seed2:14, team2:'Kennesaw State'   },
+    { id:'W7', seed1:7,  team1:'Miami FL',       seed2:10, team2:'Missouri'         },
+    { id:'W8', seed1:2,  team1:'Purdue',         seed2:15, team2:'Queens'           },
+  ],
+  SOUTH: [
+    { id:'S1', seed1:1,  team1:'Florida',        seed2:16, team2:'Prairie View'     },
+    { id:'S2', seed1:8,  team1:'Clemson',        seed2:9,  team2:'Iowa'             },
+    { id:'S3', seed1:5,  team1:'Texas Tech',     seed2:12, team2:'Akron'            },
+    { id:'S4', seed1:4,  team1:'Alabama',        seed2:13, team2:'Hofstra'          },
+    { id:'S5', seed1:6,  team1:'Tennessee',      seed2:11, team2:'VCU'              },
+    { id:'S6', seed1:3,  team1:'Virginia',       seed2:14, team2:'Wright State'     },
+    { id:'S7', seed1:7,  team1:'Saint Marys',    seed2:10, team2:'NC State'         },
+    { id:'S8', seed1:2,  team1:'Houston',        seed2:15, team2:'Idaho'            },
+  ],
+  MIDWEST: [
+    { id:'M1', seed1:1,  team1:'Michigan',       seed2:16, team2:'Howard'           },
+    { id:'M2', seed1:8,  team1:'Georgia',        seed2:9,  team2:'Saint Louis'      },
+    { id:'M3', seed1:5,  team1:'Nebraska',       seed2:12, team2:'Troy'             },
+    { id:'M4', seed1:4,  team1:'Iowa State',     seed2:13, team2:'Lehigh'           },
+    { id:'M5', seed1:6,  team1:'SMU',            seed2:11, team2:'Miami OH'         },
+    { id:'M6', seed1:3,  team1:'Kentucky',       seed2:14, team2:'Montana State'    },
+    { id:'M7', seed1:7,  team1:'Ohio State',     seed2:10, team2:'Santa Clara'      },
+    { id:'M8', seed1:2,  team1:'Illinois',       seed2:15, team2:'Tennessee State'  },
+  ],
+};
+const NCAA_ROUNDS = ['R64','R32','S16','E8','F4','CHIP'];
+const NCAA_REGIONS = ['EAST','WEST','SOUTH','MIDWEST'];
+// Region offsets in the flat picks arrays per round
+const NCAA_ROFF = {
+  EAST:    { R64:0,  R32:0,  S16:0, E8:0 },
+  WEST:    { R64:8,  R32:4,  S16:2, E8:1 },
+  SOUTH:   { R64:16, R32:8,  S16:4, E8:2 },
+  MIDWEST: { R64:24, R32:12, S16:6, E8:3 },
+};
+
+// ─── NCAA STATE ───────────────────────────────────────────────────────────────
+let ncaaLoaded = false;
+
+function loadNCAAIfNeeded() {
+  if (ncaaLoaded || !state || !state.ncaa) return;
+  ncaaLoaded = true;
+  renderNCAABracket();
+}
+
+// ─── NCAA SSE EVENTS ──────────────────────────────────────────────────────────
+// Handled in handleServerEvent above — ncaa_* events update state.ncaa and re-render
+
+// ─── NCAA HEADER ──────────────────────────────────────────────────────────────
+function renderNCAAHeader() {
+  if (!state || !state.ncaa) return;
+  const badge = document.getElementById('ncaa-lock-badge');
+  if (badge) badge.style.display = state.ncaa.picksLocked ? '' : 'none';
+}
+
+// ─── NCAA PICK COUNT ──────────────────────────────────────────────────────────
+function updateNCAAPickCount() {
+  if (!state || !state.ncaa || !activeUser) return;
+  const picks = state.ncaa.picks[activeUser] || {};
+  let made = 0, total = 32 + 16 + 8 + 4 + 2 + 1; // 63
+  for (const r of NCAA_ROUNDS) {
+    const arr = picks[r] || [];
+    made += arr.filter(t => t && t !== null).length;
+  }
+  const el = document.getElementById('ncaa-pick-count');
+  if (el) el.textContent = `${made}/${total} picks made`;
+}
+
+// ─── NCAA BRACKET RENDER ──────────────────────────────────────────────────────
+function renderNCAABracket() {
+  if (!state || !state.ncaa) return;
+  renderNCAAHeader();
+  for (const region of NCAA_REGIONS) {
+    const el = document.getElementById('ncaa-region-' + region);
+    if (el) el.innerHTML = buildNCAARegion(region);
+  }
+  buildNCAAFF();
+  updateNCAAPickCount();
+}
+
+function ncaaGet(arr, i) { return arr && arr[i] != null ? arr[i] : null; }
+function ncaaGetRes(round, i) {
+  if (!state.ncaa.results) return null;
+  const rr = state.ncaa.results[round];
+  return rr ? (rr[String(i)] || null) : null;
+}
+
+function buildNCAARegion(region) {
+  const games = NCAA_BRACKET[region];
+  const up = state.ncaa.picks[activeUser] || {};
+  const ro = NCAA_ROFF[region];
+
+  function r64Card(li) {
+    const g = games[li], gi = ro.R64 + li;
+    const picked = ncaaGet(up.R64, gi), result = ncaaGetRes('R64', gi);
+    return ncaaGameCard('R64', gi, g.team1, g.seed1, g.team2, g.seed2, picked, result);
+  }
+  function r32Card(li) {
+    const gi = ro.R32 + li;
+    const t1 = ncaaGet(up.R64, ro.R64 + li*2) || '?';
+    const t2 = ncaaGet(up.R64, ro.R64 + li*2+1) || '?';
+    const picked = ncaaGet(up.R32, gi), result = ncaaGetRes('R32', gi);
+    return ncaaAdvCard('R32', gi, t1, t2, picked, result);
+  }
+  function s16Card(li) {
+    const gi = ro.S16 + li;
+    const t1 = ncaaGet(up.R32, ro.R32 + li*2) || '?';
+    const t2 = ncaaGet(up.R32, ro.R32 + li*2+1) || '?';
+    const picked = ncaaGet(up.S16, gi), result = ncaaGetRes('S16', gi);
+    return ncaaAdvCard('S16', gi, t1, t2, picked, result);
+  }
+  function e8Card() {
+    const gi = ro.E8;
+    const t1 = ncaaGet(up.S16, ro.S16) || '?';
+    const t2 = ncaaGet(up.S16, ro.S16+1) || '?';
+    const picked = ncaaGet(up.E8, gi), result = ncaaGetRes('E8', gi);
+    return ncaaAdvCard('E8', gi, t1, t2, picked, result);
+  }
+
+  let r64h='', r32h='', s16h='', e8h='';
+  for (let i=0; i<8; i++) r64h += r64Card(i);
+  for (let i=0; i<4; i++) r32h += r32Card(i);
+  for (let i=0; i<2; i++) s16h += s16Card(i);
+  e8h = e8Card();
+
+  return `<div class="ncaa-bracket-row">
+    <div class="ncaa-col">${r64h}</div>
+    <div class="ncaa-col">${r32h}</div>
+    <div class="ncaa-col">${s16h}</div>
+    <div class="ncaa-col">${e8h}</div>
+  </div>`;
+}
+
+function buildNCAAFF() {
+  const el = document.getElementById('ncaa-ff-wrap');
+  if (!el || !state || !state.ncaa) return;
+  const up = state.ncaa.picks[activeUser] || {};
+  // F4[0]: EAST E8 winner vs WEST E8 winner
+  // F4[1]: SOUTH E8 winner vs MIDWEST E8 winner
+  const f4t = [
+    ncaaGet(up.E8, 0)||'?', ncaaGet(up.E8, 1)||'?',
+    ncaaGet(up.E8, 2)||'?', ncaaGet(up.E8, 3)||'?'
+  ];
+  const f40 = ncaaGet(up.F4, 0), f41 = ncaaGet(up.F4, 1);
+  const f4r0 = ncaaGetRes('F4', 0), f4r1 = ncaaGetRes('F4', 1);
+  const champ = ncaaGet(up.CHIP, 0);
+  const champR = ncaaGetRes('CHIP', 0);
+  const ct1 = f40 || '?', ct2 = f41 || '?';
+
+  el.innerHTML = `<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:flex-start;">
+    <div>
+      <div class="ncaa-region-label" style="text-align:center;font-size:.65rem;">SEMIFINAL 1</div>
+      ${ncaaAdvCard('F4', 0, f4t[0], f4t[1], f40, f4r0)}
+    </div>
+    <div>
+      <div class="ncaa-region-label" style="text-align:center;font-size:.65rem;">SEMIFINAL 2</div>
+      ${ncaaAdvCard('F4', 1, f4t[2], f4t[3], f41, f4r1)}
+    </div>
+    <div>
+      <div style="text-align:center;font-size:.65rem;font-weight:800;color:var(--ncaa);padding:4px 10px 8px;">🏆 CHAMPIONSHIP</div>
+      ${ncaaAdvCard('CHIP', 0, ct1, ct2, champ, champR)}
+    </div>
+  </div>`;
+}
+
+function ncaaGameCard(round, gi, team1, seed1, team2, seed2, picked, result) {
+  const p1=picked===team1, p2=picked===team2;
+  const w1=result===team1, w2=result===team2;
+  return `<div class="nc-game">
+    <div class="nc-row ${w1?'nc-win':''} ${p1?'nc-pick':''}" onclick="ncaaSetPick('${round}',${gi},'${escQ(team1)}')">
+      <span class="nc-seed">${seed1}</span><span class="nc-team" title="${team1}">${team1}</span>
+      ${p1&&result?(w1?'<span class="nc-correct">✓</span>':'<span class="nc-wrong">✗</span>'):''}
+    </div>
+    <div class="nc-row ${w2?'nc-win':''} ${p2?'nc-pick':''}" onclick="ncaaSetPick('${round}',${gi},'${escQ(team2)}')">
+      <span class="nc-seed">${seed2}</span><span class="nc-team" title="${team2}">${team2}</span>
+      ${p2&&result?(w2?'<span class="nc-correct">✓</span>':'<span class="nc-wrong">✗</span>'):''}
+    </div>
+  </div>`;
+}
+
+function ncaaAdvCard(round, gi, team1, team2, picked, result) {
+  const p1=team1!=='?'&&picked===team1, p2=team2!=='?'&&picked===team2;
+  const w1=result===team1, w2=result===team2;
+  const c1=team1!=='?'?`onclick="ncaaSetPick('${round}',${gi},'${escQ(team1)}')"`:'' ;
+  const c2=team2!=='?'?`onclick="ncaaSetPick('${round}',${gi},'${escQ(team2)}')"`:'' ;
+  return `<div class="nc-game">
+    <div class="nc-row ${w1?'nc-win':''} ${p1?'nc-pick':''} ${team1==='?'?'nc-tbd':''}" ${c1}>
+      <span class="nc-team" title="${team1}">${team1}</span>
+      ${p1&&result?(w1?'<span class="nc-correct">✓</span>':'<span class="nc-wrong">✗</span>'):''}
+    </div>
+    <div class="nc-row ${w2?'nc-win':''} ${p2?'nc-pick':''} ${team2==='?'?'nc-tbd':''}" ${c2}>
+      <span class="nc-team" title="${team2}">${team2}</span>
+      ${p2&&result?(w2?'<span class="nc-correct">✓</span>':'<span class="nc-wrong">✗</span>'):''}
+    </div>
+  </div>`;
+}
+
+function escQ(s) { return (s||'').replace(/'/g,"\\'"); }
+
+// ─── NCAA PICK SETTER ─────────────────────────────────────────────────────────
+function ncaaSetPick(round, gi, team) {
+  if (!state || !activeUser || !state.ncaa) return;
+  if (state.ncaa.picksLocked) { showToast('NCAA picks are locked!', 'err'); return; }
+
+  // Deep clone current user picks
+  const cur = state.ncaa.picks[activeUser] || {};
+  const picks = {};
+  for (const r of NCAA_ROUNDS) picks[r] = Array.from(cur[r] || []);
+
+  const old = picks[round][gi];
+  if (old === team) {
+    picks[round][gi] = null;
+    ncaaCascade(picks, round, team);
+  } else {
+    if (old) ncaaCascade(picks, round, old);
+    picks[round][gi] = team;
+  }
+
+  // Optimistic local update
+  state.ncaa.picks[activeUser] = picks;
+  renderNCAABracket();
+
+  // Save to server
+  apiFetch('/api/ncaa/picks/' + activeUser, picks)
+    .catch(e => showToast(e.message, 'err'));
+}
+
+function ncaaCascade(picks, fromRound, removedTeam) {
+  if (!removedTeam) return;
+  const idx = NCAA_ROUNDS.indexOf(fromRound);
+  for (let r = idx + 1; r < NCAA_ROUNDS.length; r++) {
+    const rnd = NCAA_ROUNDS[r];
+    const arr = picks[rnd] || [];
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i] === removedTeam) arr[i] = null;
+    }
+    picks[rnd] = arr;
+  }
+}
+
+// ─── NCAA LEADERBOARD ─────────────────────────────────────────────────────────
+// NCAA scores are calculated server-side and included in /api/leaderboard response
+
+// ─── ADMIN NCAA ───────────────────────────────────────────────────────────────
+async function adminToggleNcaaLock() {
+  if (!state || !state.ncaa) return;
+  const locked = !state.ncaa.picksLocked;
+  await apiFetch('/api/admin/ncaa/lock', { password: adminPw, locked });
+  const btn = document.getElementById('btn-ncaa-lock');
+  if (btn) {
+    btn.textContent = locked ? '🔓 Unlock NCAA Picks' : '🔒 Lock NCAA Picks';
+    btn.className   = locked ? 'btn btn-success' : 'btn btn-warn';
+  }
+  showAdminMsg('ncaa-ctrl-msg', locked ? 'NCAA picks locked' : 'NCAA picks unlocked', 'ok');
+}
+
+async function adminSetNcaaResult() {
+  const round  = document.getElementById('ncaa-res-round').value;
+  const gi     = parseInt(document.getElementById('ncaa-res-gi').value, 10);
+  const winner = document.getElementById('ncaa-res-winner').value.trim();
+  if (!round || isNaN(gi) || !winner) {
+    showAdminMsg('ncaa-res-msg', 'Fill in round, index, and winner', 'err');
+    return;
+  }
+  await apiFetch('/api/ncaa/results', { password: adminPw, round, gi, winner });
+  showAdminMsg('ncaa-res-msg', `Set ${round}[${gi}] = ${winner}`, 'ok');
+  document.getElementById('ncaa-res-winner').value = '';
+}
 </script>
 </body>
 </html>
