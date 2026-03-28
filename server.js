@@ -409,10 +409,20 @@ function teamMatch(a, b) {
 
 // ── NCAA Auto-Score ───────────────────────────────────────────────────────────
 async function autoScoreNCAA() {
-  const espn = await espnFetch(
-    'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=100&limit=100'
-  );
-  if (!espn?.events?.length) return;
+  // Fetch today's scoreboard + the two R64 days (Mar 20-21, 2026).
+  // Without the historical dates, R64 games that aren't on the live scoreboard
+  // any more can't be filled in after a server restart.
+  const BASE = 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=100&limit=100';
+  const fetches = await Promise.allSettled([
+    espnFetch(BASE),
+    espnFetch(BASE + '&dates=20260320'),
+    espnFetch(BASE + '&dates=20260321'),
+  ]);
+  const allEvents = fetches.flatMap(r => r.status === 'fulfilled' ? (r.value?.events || []) : []);
+  if (!allEvents.length) return;
+  // De-duplicate events by id
+  const seen = new Set();
+  const espnEvents = allEvents.filter(e => { if (seen.has(e.id)) return false; seen.add(e.id); return true; });
 
   const data = await loadData();
   if (!data.ncaa) return;
@@ -468,7 +478,7 @@ async function autoScoreNCAA() {
     return m;
   }
 
-  for (const event of espn.events) {
+  for (const event of espnEvents) {
     if (event.status?.type?.name !== 'STATUS_FINAL') continue;
     const comp = event.competitions?.[0];
     if (!comp?.competitors?.length) continue;
@@ -789,7 +799,17 @@ async function syncFromEversbracket2() {
         nr[rnd] = strKeyed;
       }
 
-      data.ncaa.results = nr;
+      // MERGE into existing results — don't overwrite slots already set by
+      // autoScoreNCAA (which fetches from ESPN and has the complete R64).
+      // Replacing wholesale would erase those results every 55 s.
+      if (!data.ncaa.results) data.ncaa.results = {};
+      for (const rnd of NCAA_ROUNDS) {
+        if (!nr[rnd]) continue;
+        if (!data.ncaa.results[rnd]) data.ncaa.results[rnd] = {};
+        for (const [k, v] of Object.entries(nr[rnd])) {
+          if (!data.ncaa.results[rnd][k]) data.ncaa.results[rnd][k] = v; // fill empty only
+        }
+      }
       changed = true;
     }
 
