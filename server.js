@@ -389,6 +389,7 @@ async function espnFetch(url) {
 // Normalize a team name for fuzzy matching
 function normTeam(s) {
   return (s || '').toLowerCase()
+    .replace(/['''\u2019]/g, '')   // drop apostrophes ("Mary's" → "marys")
     .replace(/[^a-z0-9 ]/g, ' ')
     .replace(/\b(university|college|the|of|at|in|st\.?)\b/g, ' ')
     .replace(/\s+/g, ' ')
@@ -409,7 +410,7 @@ function teamMatch(a, b) {
 
 // ── NCAA Auto-Score ───────────────────────────────────────────────────────────
 async function autoScoreNCAA() {
-  // Fetch today's scoreboard + the two R64 days (Mar 20-21, 2026).
+  // Fetch today's scoreboard + all four R64 days (Mar 20-23, 2026).
   // Without the historical dates, R64 games that aren't on the live scoreboard
   // any more can't be filled in after a server restart.
   const BASE = 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=100&limit=100';
@@ -417,6 +418,8 @@ async function autoScoreNCAA() {
     espnFetch(BASE),
     espnFetch(BASE + '&dates=20260320'),
     espnFetch(BASE + '&dates=20260321'),
+    espnFetch(BASE + '&dates=20260322'),
+    espnFetch(BASE + '&dates=20260323'),
   ]);
   const allEvents = fetches.flatMap(r => r.status === 'fulfilled' ? (r.value?.events || []) : []);
   if (!allEvents.length) return;
