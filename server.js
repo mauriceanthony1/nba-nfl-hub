@@ -4,6 +4,14 @@ const path = require('path');
 const https = require('https');
 const { DEFAULT_DATA, NCAA_BRACKET, NCAA_SCORING, NCAA_ROUNDS } = require('./data');
 
+// Region offsets for flat bracket arrays
+const NCAA_ROFF = {
+  EAST:    { R64:0,  R32:0,  S16:0, E8:0 },
+  WEST:    { R64:8,  R32:4,  S16:2, E8:1 },
+  SOUTH:   { R64:16, R32:8,  S16:4, E8:2 },
+  MIDWEST: { R64:24, R32:12, S16:6, E8:3 },
+};
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -47,6 +55,13 @@ async function sbFetch(path_, opts = {}) {
     console.error('sbFetch error:', e.message);
     return null;
   }
+}
+
+// Generic table reader — used to pull from eversbracket2's tables in shared Supabase
+async function sbFetchRaw(table) {
+  const res = await sbFetch(`${table}?select=*`);
+  if (!res || !res.ok) return null;
+  try { return JSON.parse(res.text); } catch { return null; }
 }
 
 async function sbLoad() {
@@ -100,6 +115,15 @@ async function loadData() {
   if (SB_URL && SB_KEY) {
     const d = await sbLoad();
     if (d) {
+      // Migrate: back-fill any top-level keys that didn't exist when state was first saved
+      let migrated = false;
+      if (!d.ncaa) {
+        d.ncaa = JSON.parse(JSON.stringify(DEFAULT_DATA.ncaa));
+        migrated = true;
+      }
+      if (!d.meta)   { d.meta   = DEFAULT_DATA.meta;   migrated = true; }
+      if (!d.picks)  { d.picks  = DEFAULT_DATA.picks;  migrated = true; }
+      if (migrated) await sbSave(d);
       memCache = d;
       return d;
     }
@@ -646,12 +670,129 @@ async function autoScoreNFL() {
   }
 }
 
+// ── Sync picks + results from eversbracket2 (shared Supabase) ─────────────────
+async function syncFromEversbracket2() {
+  try {
+    const data = await loadData();
+    if (!data.ncaa) data.ncaa = { picksLocked: false, results: {}, picks: {} };
+    let changed = false;
+
+    // 1. Sync picks from bracket_picks table
+    const pickRows = await sbFetchRaw('bracket_picks');
+    if (Array.isArray(pickRows)) {
+      for (const row of pickRows) {
+        if (!row.user_name || row.user_name === '__lock__') continue;
+        if (['PME','Phil','Reece'].includes(row.user_name) && row.picks) {
+          data.ncaa.picks[row.user_name] = row.picks;
+          changed = true;
+        }
+      }
+    }
+
+    // 2. Convert bracket_results → positional results format
+    const resultRows = await sbFetchRaw('bracket_results');
+    if (Array.isArray(resultRows) && resultRows.length > 0) {
+      // Build cumulative winner sets per round (same logic as eversbracket2)
+      const W = { R64:new Set(), R32:new Set(), S16:new Set(), E8:new Set(), F4:new Set(), CHIP:new Set() };
+      for (const { game_id, winner } of resultRows) {
+        if (!game_id || !winner) continue;
+        const lo = game_id.toLowerCase();
+        if      (lo.startsWith('chip')) ['R64','R32','S16','E8','F4','CHIP'].forEach(r => W[r].add(winner));
+        else if (lo.startsWith('f4'))   ['R64','R32','S16','E8','F4'].forEach(r => W[r].add(winner));
+        else if (lo.startsWith('e8'))   ['R64','R32','S16','E8'].forEach(r => W[r].add(winner));
+        else if (lo.startsWith('s16'))  ['R64','R32','S16'].forEach(r => W[r].add(winner));
+        else if (lo.startsWith('r32'))  ['R64','R32'].forEach(r => W[r].add(winner));
+        else                            W['R64'].add(winner);
+      }
+
+      const nr = {};
+      // R64 — each team appears in exactly one slot
+      nr.R64 = {};
+      for (const rgn of ['EAST','WEST','SOUTH','MIDWEST']) {
+        const ro = NCAA_ROFF[rgn];
+        NCAA_BRACKET[rgn].forEach((g, i) => {
+          const gi = ro.R64 + i;
+          if (W.R64.has(g.team1))      nr.R64[gi] = g.team1;
+          else if (W.R64.has(g.team2)) nr.R64[gi] = g.team2;
+        });
+      }
+      // R32
+      nr.R32 = {};
+      for (const rgn of ['EAST','WEST','SOUTH','MIDWEST']) {
+        const ro = NCAA_ROFF[rgn];
+        for (let i = 0; i < 4; i++) {
+          const gi = ro.R32 + i;
+          const t1 = nr.R64[ro.R64 + i*2], t2 = nr.R64[ro.R64 + i*2 + 1];
+          if (t1 && W.R32.has(t1))      nr.R32[gi] = t1;
+          else if (t2 && W.R32.has(t2)) nr.R32[gi] = t2;
+        }
+      }
+      // S16
+      nr.S16 = {};
+      for (const rgn of ['EAST','WEST','SOUTH','MIDWEST']) {
+        const ro = NCAA_ROFF[rgn];
+        for (let i = 0; i < 2; i++) {
+          const gi = ro.S16 + i;
+          const t1 = nr.R32[ro.R32 + i*2], t2 = nr.R32[ro.R32 + i*2 + 1];
+          if (t1 && W.S16.has(t1))      nr.S16[gi] = t1;
+          else if (t2 && W.S16.has(t2)) nr.S16[gi] = t2;
+        }
+      }
+      // E8
+      nr.E8 = {};
+      for (const rgn of ['EAST','WEST','SOUTH','MIDWEST']) {
+        const ro = NCAA_ROFF[rgn];
+        const t1 = nr.S16[ro.S16], t2 = nr.S16[ro.S16 + 1];
+        if (t1 && W.E8.has(t1))      nr.E8[ro.E8] = t1;
+        else if (t2 && W.E8.has(t2)) nr.E8[ro.E8] = t2;
+      }
+      // F4  (E8 indices: EAST=0, WEST=1, SOUTH=2, MIDWEST=3)
+      nr.F4 = {};
+      [[0,1],[2,3]].forEach(([a,b], fi) => {
+        const t1 = nr.E8[a], t2 = nr.E8[b];
+        if (t1 && W.F4.has(t1))      nr.F4[fi] = t1;
+        else if (t2 && W.F4.has(t2)) nr.F4[fi] = t2;
+      });
+      // CHIP
+      nr.CHIP = {};
+      const f0 = nr.F4[0], f1 = nr.F4[1];
+      if (f0 && W.CHIP.has(f0))      nr.CHIP[0] = f0;
+      else if (f1 && W.CHIP.has(f1)) nr.CHIP[0] = f1;
+
+      // Convert numeric keys to strings for consistency
+      for (const rnd of NCAA_ROUNDS) {
+        if (!nr[rnd]) continue;
+        const strKeyed = {};
+        Object.entries(nr[rnd]).forEach(([k,v]) => { strKeyed[String(k)] = v; });
+        nr[rnd] = strKeyed;
+      }
+
+      data.ncaa.results = nr;
+      changed = true;
+    }
+
+    if (changed) {
+      memCache = data;
+      await saveData(data);
+      for (const user of ['PME','Phil','Reece']) {
+        broadcast('ncaa_picks_update', { user, picks: (data.ncaa.picks[user] || {}) });
+      }
+      broadcast('ncaa_results_update', { results: data.ncaa.results });
+      console.log('🔄 Synced picks+results from eversbracket2');
+    }
+  } catch (e) {
+    console.error('syncFromEversbracket2 error:', e.message);
+  }
+}
+
 // ── Start ESPN poller after boot ──────────────────────────────────────────────
 const ESPN_POLL_MS = 55000; // ~55 seconds
 setTimeout(async () => {
   console.log('Starting ESPN auto-score poller…');
+  await syncFromEversbracket2(); // sync picks+results from eversbracket2 on boot
   await Promise.allSettled([autoScoreNCAA(), autoScoreNBA(), autoScoreNFL()]);
-  setInterval(() => {
+  setInterval(async () => {
+    await syncFromEversbracket2();
     Promise.allSettled([autoScoreNCAA(), autoScoreNBA(), autoScoreNFL()]);
   }, ESPN_POLL_MS);
 }, 8000); // wait 8s after boot before first poll
