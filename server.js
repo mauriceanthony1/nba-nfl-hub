@@ -705,10 +705,14 @@ async function syncFromEversbracket2() {
         else                            W['R64'].add(winner);
       }
 
-      // Fuzzy set membership — handles ESPN name variants (e.g. "SMU" vs "SMU Mustangs")
+      // Safe set membership — normalises punctuation only (e.g. "St. John's" → "St Johns").
+      // Intentionally does NOT use fuzzy word-matching to avoid false positives like
+      // "Texas" ≈ "Texas Tech" or "Miami FL" ≈ "Miami OH".
+      const normName = s => s.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
       function fhas(set, bracketName) {
         if (set.has(bracketName)) return true;
-        for (const w of set) { if (teamMatch(w, bracketName)) return true; }
+        const nb = normName(bracketName);
+        for (const w of set) { if (normName(w) === nb) return true; }
         return false;
       }
 
