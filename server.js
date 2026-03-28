@@ -819,6 +819,42 @@ setTimeout(async () => {
   }, ESPN_POLL_MS);
 }, 8000); // wait 8s after boot before first poll
 
+// ─── DEBUG ROUTE (temporary) ──────────────────────────────────────────────────
+// GET /api/debug-ncaa — raw bracket_results rows + computed W sets
+app.get('/api/debug-ncaa', async (req, res) => {
+  try {
+    const resultRows = await sbFetchRaw('bracket_results');
+    const pickRows   = await sbFetchRaw('bracket_picks');
+
+    const normName = s => {
+      let n = s.toLowerCase()
+        .replace(/['''\u2019]/g, '')
+        .replace(/[^a-z0-9 ]/g, ' ')
+        .replace(/\s+/g, ' ').trim();
+      return n.replace(/ st$/, ' state');
+    };
+
+    const W = { R64:[], R32:[], S16:[], E8:[], F4:[], CHIP:[] };
+    for (const { game_id, winner } of (resultRows || [])) {
+      if (!game_id || !winner) continue;
+      const lo = game_id.toLowerCase();
+      const rounds = lo.startsWith('chip') ? ['R64','R32','S16','E8','F4','CHIP'] :
+                     lo.startsWith('f4')   ? ['R64','R32','S16','E8','F4'] :
+                     lo.startsWith('e8')   ? ['R64','R32','S16','E8'] :
+                     lo.startsWith('s16')  ? ['R64','R32','S16'] :
+                     lo.startsWith('r32')  ? ['R64','R32'] : ['R64'];
+      rounds.forEach(r => W[r].push(winner));
+    }
+
+    res.json({
+      raw_results: resultRows,
+      raw_picks_sample: (pickRows || []).map(r => ({ user: r.user_name, rounds: r.picks ? Object.keys(r.picks) : [] })),
+      W_sets: Object.fromEntries(Object.entries(W).map(([k,v]) => [k, [...new Set(v)]])),
+      normName_samples: (resultRows||[]).slice(0,5).map(r => ({ game_id: r.game_id, winner: r.winner, norm: normName(r.winner||'') }))
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── NCAA ROUTES ──────────────────────────────────────────────────────────────
 
 // GET /api/ncaa/state — bracket definition + picks + results + locked flag
