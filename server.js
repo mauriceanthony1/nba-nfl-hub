@@ -705,6 +705,13 @@ async function syncFromEversbracket2() {
         else                            W['R64'].add(winner);
       }
 
+      // Fuzzy set membership — handles ESPN name variants (e.g. "SMU" vs "SMU Mustangs")
+      function fhas(set, bracketName) {
+        if (set.has(bracketName)) return true;
+        for (const w of set) { if (teamMatch(w, bracketName)) return true; }
+        return false;
+      }
+
       const nr = {};
       // R64 — each team appears in exactly one slot
       nr.R64 = {};
@@ -712,8 +719,8 @@ async function syncFromEversbracket2() {
         const ro = NCAA_ROFF[rgn];
         NCAA_BRACKET[rgn].forEach((g, i) => {
           const gi = ro.R64 + i;
-          if (W.R64.has(g.team1))      nr.R64[gi] = g.team1;
-          else if (W.R64.has(g.team2)) nr.R64[gi] = g.team2;
+          if (fhas(W.R64, g.team1))      nr.R64[gi] = g.team1;
+          else if (fhas(W.R64, g.team2)) nr.R64[gi] = g.team2;
         });
       }
       // R32
@@ -723,8 +730,8 @@ async function syncFromEversbracket2() {
         for (let i = 0; i < 4; i++) {
           const gi = ro.R32 + i;
           const t1 = nr.R64[ro.R64 + i*2], t2 = nr.R64[ro.R64 + i*2 + 1];
-          if (t1 && W.R32.has(t1))      nr.R32[gi] = t1;
-          else if (t2 && W.R32.has(t2)) nr.R32[gi] = t2;
+          if (t1 && fhas(W.R32, t1))      nr.R32[gi] = t1;
+          else if (t2 && fhas(W.R32, t2)) nr.R32[gi] = t2;
         }
       }
       // S16
@@ -734,8 +741,8 @@ async function syncFromEversbracket2() {
         for (let i = 0; i < 2; i++) {
           const gi = ro.S16 + i;
           const t1 = nr.R32[ro.R32 + i*2], t2 = nr.R32[ro.R32 + i*2 + 1];
-          if (t1 && W.S16.has(t1))      nr.S16[gi] = t1;
-          else if (t2 && W.S16.has(t2)) nr.S16[gi] = t2;
+          if (t1 && fhas(W.S16, t1))      nr.S16[gi] = t1;
+          else if (t2 && fhas(W.S16, t2)) nr.S16[gi] = t2;
         }
       }
       // E8
@@ -743,21 +750,21 @@ async function syncFromEversbracket2() {
       for (const rgn of ['EAST','WEST','SOUTH','MIDWEST']) {
         const ro = NCAA_ROFF[rgn];
         const t1 = nr.S16[ro.S16], t2 = nr.S16[ro.S16 + 1];
-        if (t1 && W.E8.has(t1))      nr.E8[ro.E8] = t1;
-        else if (t2 && W.E8.has(t2)) nr.E8[ro.E8] = t2;
+        if (t1 && fhas(W.E8, t1))      nr.E8[ro.E8] = t1;
+        else if (t2 && fhas(W.E8, t2)) nr.E8[ro.E8] = t2;
       }
       // F4  (E8 indices: EAST=0, WEST=1, SOUTH=2, MIDWEST=3)
       nr.F4 = {};
       [[0,1],[2,3]].forEach(([a,b], fi) => {
         const t1 = nr.E8[a], t2 = nr.E8[b];
-        if (t1 && W.F4.has(t1))      nr.F4[fi] = t1;
-        else if (t2 && W.F4.has(t2)) nr.F4[fi] = t2;
+        if (t1 && fhas(W.F4, t1))      nr.F4[fi] = t1;
+        else if (t2 && fhas(W.F4, t2)) nr.F4[fi] = t2;
       });
       // CHIP
       nr.CHIP = {};
       const f0 = nr.F4[0], f1 = nr.F4[1];
-      if (f0 && W.CHIP.has(f0))      nr.CHIP[0] = f0;
-      else if (f1 && W.CHIP.has(f1)) nr.CHIP[0] = f1;
+      if (f0 && fhas(W.CHIP, f0))      nr.CHIP[0] = f0;
+      else if (f1 && fhas(W.CHIP, f1)) nr.CHIP[0] = f1;
 
       // Convert numeric keys to strings for consistency
       for (const rnd of NCAA_ROUNDS) {
@@ -894,16 +901,30 @@ app.get('/api/leaderboard', async (req, res) => {
       }
     }
 
-    // NCAA scoring
+    // NCAA scoring — set-based, matching eversbracket2's algorithm exactly:
+    // For each round, score each pick that appears in the cumulative winner set.
+    // A team that won S16 is in W.R64, W.R32, and W.S16 (cumulative), so a user
+    // who picked them in all three arrays scores points for all three rounds.
     if (data.ncaa && data.ncaa.results) {
-      const ncaaPicks  = (data.ncaa.picks || {})[user] || {};
-      const ncaaRes    = data.ncaa.results;
+      const ncaaPicks = (data.ncaa.picks || {})[user] || {};
+      const ncaaRes   = data.ncaa.results;
+
+      // Build cumulative winner sets from positional results
+      const W = {};
+      NCAA_ROUNDS.forEach(r => { W[r] = new Set(); });
+      for (let ri = 0; ri < NCAA_ROUNDS.length; ri++) {
+        const round = NCAA_ROUNDS[ri];
+        for (const winner of Object.values(ncaaRes[round] || {})) {
+          if (!winner) continue;
+          // Add to this round AND all earlier rounds (cumulative)
+          for (let j = 0; j <= ri; j++) W[NCAA_ROUNDS[j]].add(winner);
+        }
+      }
+
       for (const round of NCAA_ROUNDS) {
-        const pts        = NCAA_SCORING[round];
-        const roundRes   = ncaaRes[round] || {};
-        const roundPicks = ncaaPicks[round] || [];
-        for (const [gi, winner] of Object.entries(roundRes)) {
-          if (winner && roundPicks[parseInt(gi, 10)] === winner) {
+        const pts = NCAA_SCORING[round];
+        for (const team of (ncaaPicks[round] || [])) {
+          if (team && W[round].has(team)) {
             scores[user].ncaa  += pts;
             scores[user].total += pts;
           }
