@@ -677,15 +677,15 @@ async function syncFromEversbracket2() {
     if (!data.ncaa) data.ncaa = { picksLocked: false, results: {}, picks: {} };
     let changed = false;
 
-    // 1. Sync picks from bracket_picks table
-    const pickRows = await sbFetchRaw('bracket_picks');
-    if (Array.isArray(pickRows)) {
-      for (const row of pickRows) {
-        if (!row.user_name || row.user_name === '__lock__') continue;
-        if (['PME','Phil','Reece'].includes(row.user_name) && row.picks) {
-          data.ncaa.picks[row.user_name] = row.picks;
-          changed = true;
-        }
+    // 1. Picks are pre-seeded in nba-nfl-hub format (DEFAULT_DATA.ncaa.picks).
+    //    We do NOT sync from bracket_picks because eversbracket2 stores ESPN team
+    //    names (e.g. "St. John's") which differ from our canonical names ("St Johns"),
+    //    causing scoring mismatches. Picks are locked once the tournament starts anyway.
+    for (const user of ['PME', 'Phil', 'Reece']) {
+      const seeded = (DEFAULT_DATA.ncaa.picks || {})[user];
+      if (seeded) {
+        data.ncaa.picks[user] = JSON.parse(JSON.stringify(seeded));
+        changed = true;
       }
     }
 
@@ -913,22 +913,25 @@ app.get('/api/leaderboard', async (req, res) => {
       const ncaaPicks = (data.ncaa.picks || {})[user] || {};
       const ncaaRes   = data.ncaa.results;
 
-      // Build cumulative winner sets from positional results
+      // Build cumulative winner sets from positional results.
+      // normN strips punctuation so "St. John's" matches "St Johns" etc.
+      const normN = s => s.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
       const W = {};
       NCAA_ROUNDS.forEach(r => { W[r] = new Set(); });
       for (let ri = 0; ri < NCAA_ROUNDS.length; ri++) {
         const round = NCAA_ROUNDS[ri];
         for (const winner of Object.values(ncaaRes[round] || {})) {
           if (!winner) continue;
-          // Add to this round AND all earlier rounds (cumulative)
-          for (let j = 0; j <= ri; j++) W[NCAA_ROUNDS[j]].add(winner);
+          // Store normalised name so pick lookups work regardless of punctuation
+          const nw = normN(winner);
+          for (let j = 0; j <= ri; j++) W[NCAA_ROUNDS[j]].add(nw);
         }
       }
 
       for (const round of NCAA_ROUNDS) {
         const pts = NCAA_SCORING[round];
         for (const team of (ncaaPicks[round] || [])) {
-          if (team && W[round].has(team)) {
+          if (team && W[round].has(normN(team))) {
             scores[user].ncaa  += pts;
             scores[user].total += pts;
           }
