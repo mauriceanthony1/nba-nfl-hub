@@ -794,6 +794,15 @@ async function syncFromEversbracket2() {
       if (f0 && fhas(W.CHIP, f0))      nr.CHIP[0] = f0;
       else if (f1 && fhas(W.CHIP, f1)) nr.CHIP[0] = f1;
 
+      // Save winner sets for accurate leaderboard scoring.
+      // The leaderboard uses these directly (same as EB2) instead of building
+      // W sets from positional stored results, avoiding phantom pts from ESPN
+      // mis-matches and slot-assignment ties in S16/E8 sync.
+      data.ncaa.winnerSets = {};
+      for (const rnd of NCAA_ROUNDS) {
+        data.ncaa.winnerSets[rnd] = Array.from(W[rnd]);
+      }
+
       // Convert numeric keys to strings for consistency
       for (const rnd of NCAA_ROUNDS) {
         if (!nr[rnd]) continue;
@@ -1036,13 +1045,24 @@ app.get('/api/leaderboard', async (req, res) => {
       };
       const W = {};
       NCAA_ROUNDS.forEach(r => { W[r] = new Set(); });
-      for (let ri = 0; ri < NCAA_ROUNDS.length; ri++) {
-        const round = NCAA_ROUNDS[ri];
-        for (const winner of Object.values(ncaaRes[round] || {})) {
-          if (!winner) continue;
-          // Store normalised name so pick lookups work regardless of punctuation
-          const nw = normN(winner);
-          for (let j = 0; j <= ri; j++) W[NCAA_ROUNDS[j]].add(nw);
+
+      // Prefer winner sets from bracket_results (same source EB2 uses).
+      // These are authoritative — avoids phantom pts from ESPN mis-matches
+      // or slot-assignment ties (e.g. both Michigan State & UConn in W.S16).
+      // Fall back to positional stored results only if not yet synced.
+      const winnerSets = (data.ncaa || {}).winnerSets;
+      if (winnerSets) {
+        for (const rnd of NCAA_ROUNDS) {
+          for (const name of (winnerSets[rnd] || [])) W[rnd].add(normN(name));
+        }
+      } else {
+        for (let ri = 0; ri < NCAA_ROUNDS.length; ri++) {
+          const round = NCAA_ROUNDS[ri];
+          for (const winner of Object.values(ncaaRes[round] || {})) {
+            if (!winner) continue;
+            const nw = normN(winner);
+            for (let j = 0; j <= ri; j++) W[NCAA_ROUNDS[j]].add(nw);
+          }
         }
       }
 
