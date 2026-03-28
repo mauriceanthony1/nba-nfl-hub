@@ -677,15 +677,18 @@ async function syncFromEversbracket2() {
     if (!data.ncaa) data.ncaa = { picksLocked: false, results: {}, picks: {} };
     let changed = false;
 
-    // 1. Picks are pre-seeded in nba-nfl-hub format (DEFAULT_DATA.ncaa.picks).
-    //    We do NOT sync from bracket_picks because eversbracket2 stores ESPN team
-    //    names (e.g. "St. John's") which differ from our canonical names ("St Johns"),
-    //    causing scoring mismatches. Picks are locked once the tournament starts anyway.
-    for (const user of ['PME', 'Phil', 'Reece']) {
-      const seeded = (DEFAULT_DATA.ncaa.picks || {})[user];
-      if (seeded) {
-        data.ncaa.picks[user] = JSON.parse(JSON.stringify(seeded));
-        changed = true;
+    // 1. Sync picks from bracket_picks table.
+    //    eversbracket2 may store ESPN names (e.g. "St. John's") while nba-nfl-hub uses
+    //    canonical names ("St Johns").  The leaderboard scorer normalises both picks and
+    //    result-set entries via normN(), so punctuation/apostrophe differences are handled.
+    const pickRows = await sbFetchRaw('bracket_picks');
+    if (Array.isArray(pickRows)) {
+      for (const row of pickRows) {
+        if (!row.user_name || row.user_name === '__lock__') continue;
+        if (['PME','Phil','Reece'].includes(row.user_name) && row.picks) {
+          data.ncaa.picks[row.user_name] = row.picks;
+          changed = true;
+        }
       }
     }
 
@@ -705,10 +708,18 @@ async function syncFromEversbracket2() {
         else                            W['R64'].add(winner);
       }
 
-      // Safe set membership — normalises punctuation only (e.g. "St. John's" → "St Johns").
-      // Intentionally does NOT use fuzzy word-matching to avoid false positives like
-      // "Texas" ≈ "Texas Tech" or "Miami FL" ≈ "Miami OH".
-      const normName = s => s.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+      // Safe set membership — normalises names for comparison:
+      //   • apostrophes removed entirely  ("John's" → "Johns", not "John s")
+      //   • other punctuation → space     ("St." → "st", "(FL)" → "fl")
+      //   • trailing "st" expanded        ("Utah St." → "utah state")
+      // Does NOT use substring matching to avoid false positives.
+      const normName = s => {
+        let n = s.toLowerCase()
+          .replace(/['''\u2019]/g, '')       // drop apostrophes → "Johns" not "John s"
+          .replace(/[^a-z0-9 ]/g, ' ')       // other punct → space
+          .replace(/\s+/g, ' ').trim();
+        return n.replace(/ st$/, ' state');  // "Utah St." → "utah state"
+      };
       function fhas(set, bracketName) {
         if (set.has(bracketName)) return true;
         const nb = normName(bracketName);
@@ -914,8 +925,15 @@ app.get('/api/leaderboard', async (req, res) => {
       const ncaaRes   = data.ncaa.results;
 
       // Build cumulative winner sets from positional results.
-      // normN strips punctuation so "St. John's" matches "St Johns" etc.
-      const normN = s => s.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+      // normN normalises names so ESPN-format picks match nba-nfl-hub result names:
+      //   "St. John's" → "st johns",  "Utah St." → "utah state",  "Miami (FL)" → "miami fl"
+      const normN = s => {
+        let n = s.toLowerCase()
+          .replace(/['''\u2019]/g, '')       // drop apostrophes
+          .replace(/[^a-z0-9 ]/g, ' ')       // other punct → space
+          .replace(/\s+/g, ' ').trim();
+        return n.replace(/ st$/, ' state');  // ESPN "St." → "State"
+      };
       const W = {};
       NCAA_ROUNDS.forEach(r => { W[r] = new Set(); });
       for (let ri = 0; ri < NCAA_ROUNDS.length; ri++) {
