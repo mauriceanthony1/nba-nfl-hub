@@ -866,11 +866,52 @@ app.get('/api/debug-ncaa', async (req, res) => {
       rounds.forEach(r => W[r].push(winner));
     }
 
+    // Also show stored ncaa.results (what autoScoreNCAA has filled in)
+    const data = await loadData();
+    const storedRes = (data.ncaa || {}).results || {};
+    const storedPicks = (data.ncaa || {}).picks || {};
+
+    // Score each user against stored results using the same normN as leaderboard
+    const normN = s => {
+      let n = s.toLowerCase().replace(/['''\u2019]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+      return n.replace(/ st$/, ' state');
+    };
+    const NCAA_ROUNDS_L = ['R64','R32','S16','E8','F4','CHIP'];
+    const NCAA_SCORING_L = { R64:1, R32:2, S16:4, E8:8, F4:16, CHIP:32 };
+    const scores = {};
+    for (const user of ['PME','Phil','Reece']) {
+      const picks = storedPicks[user] || {};
+      const WW = {};
+      NCAA_ROUNDS_L.forEach(r => { WW[r] = new Set(); });
+      for (let ri = 0; ri < NCAA_ROUNDS_L.length; ri++) {
+        const round = NCAA_ROUNDS_L[ri];
+        for (const winner of Object.values(storedRes[round] || {})) {
+          if (!winner) continue;
+          const nw = normN(winner);
+          for (let j = 0; j <= ri; j++) WW[NCAA_ROUNDS_L[j]].add(nw);
+        }
+      }
+      let total = 0;
+      const breakdown = {};
+      for (const round of NCAA_ROUNDS_L) {
+        let pts = 0;
+        for (const team of (picks[round] || [])) {
+          if (team && WW[round].has(normN(team))) pts += NCAA_SCORING_L[round];
+        }
+        breakdown[round] = pts;
+        total += pts;
+      }
+      scores[user] = { total, breakdown, picksCount: Object.fromEntries(NCAA_ROUNDS_L.map(r => [r, (picks[r]||[]).length])) };
+    }
+
     res.json({
-      raw_results: resultRows,
-      raw_picks_sample: (pickRows || []).map(r => ({ user: r.user_name, rounds: r.picks ? Object.keys(r.picks) : [] })),
-      W_sets: Object.fromEntries(Object.entries(W).map(([k,v]) => [k, [...new Set(v)]])),
-      normName_samples: (resultRows||[]).slice(0,5).map(r => ({ game_id: r.game_id, winner: r.winner, norm: normName(r.winner||'') }))
+      stored_R64_count: Object.keys(storedRes.R64 || {}).length,
+      stored_R64: storedRes.R64,
+      stored_R32: storedRes.R32,
+      stored_S16: storedRes.S16,
+      computed_scores: scores,
+      W_sets_from_bracket_results: Object.fromEntries(Object.entries(W).map(([k,v]) => [k, [...new Set(v)]])),
+      picks_per_user: Object.fromEntries(['PME','Phil','Reece'].map(u => [u, storedPicks[u] || {}]))
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
