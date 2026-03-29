@@ -110,10 +110,10 @@ const DEFAULT_DATA = {
 
     east: {
       r1: [
-        { id: "e1a", round: "First Round", conf: "East", top: { seed: 1, name: "Cavaliers", abbr: "CLE" }, bot: { seed: 8, name: "Pistons",  abbr: "DET" }, wins_top: 0, wins_bot: 0, winner: null, locked: false },
-        { id: "e1b", round: "First Round", conf: "East", top: { seed: 2, name: "Celtics",   abbr: "BOS" }, bot: { seed: 7, name: "Heat",     abbr: "MIA" }, wins_top: 0, wins_bot: 0, winner: null, locked: false },
-        { id: "e1c", round: "First Round", conf: "East", top: { seed: 3, name: "Knicks",    abbr: "NYK" }, bot: { seed: 6, name: "Bucks",    abbr: "MIL" }, wins_top: 0, wins_bot: 0, winner: null, locked: false },
-        { id: "e1d", round: "First Round", conf: "East", top: { seed: 4, name: "Magic",     abbr: "ORL" }, bot: { seed: 5, name: "Pacers",   abbr: "IND" }, wins_top: 0, wins_bot: 0, winner: null, locked: false }
+        { id: "e1a", round: "First Round", conf: "East", top: { seed: 1, name: "Pistons",   abbr: "DET" }, bot: { seed: 8, name: "Hornets",  abbr: "CHA" }, wins_top: 0, wins_bot: 0, winner: null, locked: false },
+        { id: "e1b", round: "First Round", conf: "East", top: { seed: 2, name: "Celtics",   abbr: "BOS" }, bot: { seed: 7, name: "76ers",    abbr: "PHI" }, wins_top: 0, wins_bot: 0, winner: null, locked: false },
+        { id: "e1c", round: "First Round", conf: "East", top: { seed: 3, name: "Knicks",    abbr: "NYK" }, bot: { seed: 6, name: "Hawks",    abbr: "ATL" }, wins_top: 0, wins_bot: 0, winner: null, locked: false },
+        { id: "e1d", round: "First Round", conf: "East", top: { seed: 4, name: "Cavaliers", abbr: "CLE" }, bot: { seed: 5, name: "Raptors",  abbr: "TOR" }, wins_top: 0, wins_bot: 0, winner: null, locked: false }
       ],
       r2: [
         { id: "e2a", round: "Second Round", conf: "East", top: { seed: null, name: "TBD", abbr: "???" }, bot: { seed: null, name: "TBD", abbr: "???" }, wins_top: 0, wins_bot: 0, winner: null, locked: false },
@@ -126,9 +126,9 @@ const DEFAULT_DATA = {
 
     west: {
       r1: [
-        { id: "w1a", round: "First Round", conf: "West", top: { seed: 1, name: "Thunder",    abbr: "OKC" }, bot: { seed: 8, name: "Lakers",    abbr: "LAL" }, wins_top: 0, wins_bot: 0, winner: null, locked: false },
-        { id: "w1b", round: "First Round", conf: "West", top: { seed: 2, name: "Rockets",    abbr: "HOU" }, bot: { seed: 7, name: "Warriors",  abbr: "GSW" }, wins_top: 0, wins_bot: 0, winner: null, locked: false },
-        { id: "w1c", round: "First Round", conf: "West", top: { seed: 3, name: "Mavericks",  abbr: "DAL" }, bot: { seed: 6, name: "Grizzlies", abbr: "MEM" }, wins_top: 0, wins_bot: 0, winner: null, locked: false },
+        { id: "w1a", round: "First Round", conf: "West", top: { seed: 1, name: "Thunder",    abbr: "OKC" }, bot: { seed: 8, name: "Clippers",  abbr: "LAC" }, wins_top: 0, wins_bot: 0, winner: null, locked: false },
+        { id: "w1b", round: "First Round", conf: "West", top: { seed: 2, name: "Spurs",      abbr: "SAS" }, bot: { seed: 7, name: "Suns",      abbr: "PHX" }, wins_top: 0, wins_bot: 0, winner: null, locked: false },
+        { id: "w1c", round: "First Round", conf: "West", top: { seed: 3, name: "Lakers",     abbr: "LAL" }, bot: { seed: 6, name: "Rockets",   abbr: "HOU" }, wins_top: 0, wins_bot: 0, winner: null, locked: false },
         { id: "w1d", round: "First Round", conf: "West", top: { seed: 4, name: "Nuggets",    abbr: "DEN" }, bot: { seed: 5, name: "T-Wolves",  abbr: "MIN" }, wins_top: 0, wins_bot: 0, winner: null, locked: false }
       ],
       r2: [

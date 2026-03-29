@@ -310,6 +310,26 @@ app.post('/api/admin/nba/team', async (req, res) => {
   res.json({ ok: true });
 });
 
+// Reset first-round NBA bracket from DEFAULT_DATA (preserves wins/picks/results)
+app.post('/api/admin/reset-nba-r1', async (req, res) => {
+  const { password } = req.body;
+  const data = await loadData();
+  if (password !== data.meta.adminPassword) return res.status(401).json({ error: 'Wrong password' });
+
+  const fresh = JSON.parse(JSON.stringify(DEFAULT_DATA.nba));
+  // Copy only the r1 team/seed structure, keeping wins/winner/locked as-is
+  for (const conf of ['east', 'west']) {
+    data.nba[conf].r1 = data.nba[conf].r1.map((series, i) => {
+      const f = fresh[conf].r1[i];
+      return { ...series, top: { ...series.top, seed: f.top.seed, name: f.top.name, abbr: f.top.abbr },
+                          bot: { ...series.bot, seed: f.bot.seed, name: f.bot.name, abbr: f.bot.abbr } };
+    });
+  }
+  await saveData(data);
+  broadcast('nba_update', { nba: data.nba });
+  res.json({ ok: true, east: data.nba.east.r1, west: data.nba.west.r1 });
+});
+
 // ─── NFL ADMIN ────────────────────────────────────────────────────────────────
 app.post('/api/admin/nfl/game', async (req, res) => {
   const { password, weekId, gameId, away, home, score_away, score_home, winner, status } = req.body;
